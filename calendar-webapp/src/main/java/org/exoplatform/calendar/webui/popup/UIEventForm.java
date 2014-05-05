@@ -43,6 +43,7 @@ import org.exoplatform.services.log.Log;
 import org.exoplatform.services.mail.MailService;
 import org.exoplatform.services.organization.OrganizationService;
 import org.exoplatform.services.organization.User;
+import org.exoplatform.services.organization.UserStatus;
 import org.exoplatform.upload.UploadService;
 import org.exoplatform.web.application.AbstractApplicationMessage;
 import org.exoplatform.web.application.ApplicationMessage;
@@ -989,7 +990,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
     StringBuffer sb = new StringBuffer() ;
 
     for(String s : values.split("[\\r\\n]+")) {
-      User user = orgService.getUserHandler().findUserByName(s) ;
+      User user = orgService.getUserHandler().findUserByName(s, UserStatus.ANY) ;
       if(user != null) {
         participants_.put(s.trim(), user.getEmail()) ;
         if(!CalendarUtils.isEmpty(sb.toString())) sb.append(CalendarUtils.BREAK_LINE) ;
@@ -1333,7 +1334,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
         // is new
         if ((entry.length == 1) && (!entry[0].contains("@"))) {
           if (builder.length() > 0)
-            builder.append(CalendarUtils.BREAK_LINE);
+            builder.append(CalendarUtils.COMMA);
           builder.append(entry[0]);
         }
       }
@@ -1344,7 +1345,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
     }
 
     try {
-      if (toId != null) {
+      if (toId != null && !toId.isEmpty()) {
         sendMail(CalendarUtils.getMailService(), CalendarUtils.getOrganizationService(), calSetting, username, toId, calendarEvent);
         List<String> parsUpdated = new LinkedList<String>();
         for (String parSt : calendarEvent.getParticipantStatus()) {
