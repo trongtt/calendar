@@ -1,11 +1,8 @@
 (function(gj) {
 /**
-
 relooking support for schedule tab
 */
-
-var _module = {};
-ScheduleSupport = {
+var ScheduleSupport = {
 	//returns index of the cell in the first row with the time given in format : HH:MM (AM/PM)
 	indexFromTime : function(time) {
 	    var hourStr = time.split(':')[0];
@@ -31,8 +28,7 @@ ScheduleSupport = {
 	},
 
 	//apply green period in schedule tab 
-	applyPeriod : function(){
-	    //var Highlighter = eXo.calendar.UIHSelection;
+	applyPeriod : function() {
 	    var scheduleTab = gj('#eventAttender-tab')[0];
 	    if(scheduleTab) {
 		// row for drag
@@ -62,8 +58,8 @@ ScheduleSupport = {
 			end = UIComboboxInputs[0].value;
 		    }
 
-		    var startIndex = _module.ScheduleSupport.indexFromTime(start);
-		    var endIndex = _module.ScheduleSupport.indexFromTime(end);
+		    var startIndex = ScheduleSupport.indexFromTime(start);
+		    var endIndex = ScheduleSupport.indexFromTime(end);
 
 		    // add UserSelection class to have green color
 		    for(var i = 1; i < cells.length; i++) {
@@ -148,6 +144,6 @@ ScheduleSupport = {
 	}
 	
 }
-_module.ScheduleSupport = ScheduleSupport;
-return _module.ScheduleSupport;
+
+return ScheduleSupport;
 })(gj);
