@@ -15,6 +15,7 @@ import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.TimeZone;
+import org.apache.commons.lang.StringEscapeUtils;
 import org.exoplatform.calendar.service.CalendarEvent;
 import org.exoplatform.calendar.service.CalendarService;
 import org.exoplatform.calendar.service.CalendarSetting;
@@ -181,20 +182,15 @@ public class UICreateEvent extends UIForm {
         calEvent.setToDateTime(to);
         calEvent.setCalType(uiForm.calType_);
         String calName="";
-        if(calService.getUserCalendar(username,uiForm.getEventCalendar())!=null){
-
-          if (calService.getUserCalendar(username,uiForm.getEventCalendar()).getId().equals(Utils.getDefaultCalendarId(username)) ) {
+        if(calService.getUserCalendar(username,uiForm.getEventCalendar())!=null) {
             calName = calService.getUserCalendar(username,uiForm.getEventCalendar()).getName();
 
-          }
-        }else {
+        } else {
           if(calService.getGroupCalendar(uiForm.getEventCalendar())!=null){
-
-
             calName= getGroupCalendarName(calService.getGroupCalendar(uiForm.getEventCalendar()).getGroups()[0].substring(calService.getGroupCalendar(uiForm.getEventCalendar()).getGroups()[0].lastIndexOf("/") + 1),
                                           calService.getGroupCalendar(uiForm.getEventCalendar()).getName()) ;
 
-          } else{
+          } else {
             if( calService.getSharedCalendars(username,true).getCalendarById(uiForm.getEventCalendar())!=null){
               if (calService.getUserCalendar(username,uiForm.getEventCalendar()).getId().equals(Utils.getDefaultCalendarId(calService.getUserCalendar(username,uiForm.getEventCalendar()).getCalendarOwner())) && calService.getUserCalendar(username,uiForm.getEventCalendar()).getName().equals(NewUserListener.defaultCalendarName)) {
                 calName = getResourceBundle("UICreateEvent.label." + NewUserListener.defaultCalendarId, NewUserListener.defaultCalendarId);
@@ -220,7 +216,8 @@ public class UICreateEvent extends UIForm {
         if (cancelEvent != null) {
           cancelEvent.broadcast();
         }
-        event.getRequestContext().getJavascriptManager().require("SHARED/navigation-toolbar", "toolbarnav").addScripts("toolbarnav.UIPortalNavigation.cancelNextClick('UICreateList','UICreatePlatformToolBarPortlet','" + message + "');");
+        event.getRequestContext().getJavascriptManager().require("SHARED/navigation-toolbar", "toolbarnav")
+             .addScripts("toolbarnav.UIPortalNavigation.cancelNextClick('UICreateList','UICreatePlatformToolBarPortlet','" + StringEscapeUtils.escapeJavaScript(message) + "');");
       } catch (Exception e) {
         if (log.isDebugEnabled()) {
           log.debug("Fail to quick add event to the calendar", e);
@@ -254,7 +251,7 @@ public class UICreateEvent extends UIForm {
     return df.parse(fromField + Utils.SPACE + timeField);
     } catch (Exception e) {
       return null;
-    } 
+    }
   }
 
   public static Date getEndDate(boolean isAllDate, String dateFormat, String fromField, String timeFormat, String timeField) throws Exception {
@@ -273,7 +270,7 @@ public class UICreateEvent extends UIForm {
       return df.parse(fromField + Utils.SPACE + timeField);
     } catch (Exception e) {
       return null;
-    }  
+    }
   }
 
   public static CalendarSetting getCurrentUserCalendarSetting() {

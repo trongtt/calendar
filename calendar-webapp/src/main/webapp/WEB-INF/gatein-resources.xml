@@ -14,7 +14,7 @@
       </depends>
     <depends>
       <module>LoadMorePlugin</module>
-    </depends>  
+    </depends>
     <depends>
       <module>Highlighter</module>
     </depends>
@@ -151,7 +151,7 @@
     <name>Reminder</name>
     <script>
       <path>/javascript/eXo/calendar/Reminder.js</path>
-    </script>   
+    </script>
     <depends>
       <module>commons-cometd</module>
       <as>cometd</as>
@@ -218,7 +218,7 @@
     </depends>
     <depends>
       <module>UICalendarMan</module>
-    </depends> 
+    </depends>
     <depends>
       <module>base</module>
     </depends>
@@ -238,7 +238,7 @@
     </depends>
     <depends>
       <module>Highlighter</module>
-    </depends> 
+    </depends>
   </module>
   <module>
     <name>UIColorPicker</name>
@@ -260,5 +260,23 @@
       <as>gj</as>
     </depends>
   </module>
+
+  <!-- Jquery placeholder plugin -->
+  <module>
+    <name>placeholder</name>
+    <script>
+      <adapter>
+        (function($) {
+        var _$ = window.jQuery; window.jQuery = $;
+        <include>/javascript/jquery-plugins/jquery.placeholder.js</include>
+        window.jQuery = _$;
+        })($);
+      </adapter>
+    </script>
+    <depends>
+      <module>jquery</module>
+    </depends>
+  </module>
+
 </gatein-resources>
 
