@@ -8,7 +8,7 @@ var UIDateTimePicker = {
   months : ['January','February','March','April','May','June','July','August','September','October','November','December'],
   weekdays : ['S','M','T','W','T','F','S'],
   tooltip : ['Previous Year', 'Previous Month', 'Next Month', 'Next Year'],
-  pathResource : "/csResources/javascript/eXo/cs/lang/",
+  pathResource : "/calendar/javascript/eXo/calendar/cs/lang/",
 
   getLang : function() {
     try {
