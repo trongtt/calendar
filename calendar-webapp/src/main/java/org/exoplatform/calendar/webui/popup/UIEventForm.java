@@ -31,11 +31,13 @@ import org.exoplatform.calendar.webui.UICalendarPortlet;
 import org.exoplatform.calendar.webui.UICalendarViewContainer;
 import org.exoplatform.calendar.webui.UIFormDateTimePicker;
 import org.exoplatform.calendar.webui.UIListContainer;
+import org.exoplatform.calendar.webui.UIListView;
 import org.exoplatform.calendar.webui.UIMiniCalendar;
 import org.exoplatform.container.PortalContainer;
 import org.exoplatform.download.DownloadResource;
 import org.exoplatform.download.DownloadService;
 import org.exoplatform.download.InputStreamDownloadResource;
+import org.exoplatform.portal.Constants;
 import org.exoplatform.portal.webui.util.Util;
 import org.exoplatform.services.log.ExoLogger;
 import org.exoplatform.services.log.Log;
@@ -43,6 +45,8 @@ import org.exoplatform.services.mail.MailService;
 import org.exoplatform.services.organization.OrganizationService;
 import org.exoplatform.services.organization.User;
 import org.exoplatform.services.organization.UserStatus;
+import org.exoplatform.services.organization.UserProfile;
+import org.exoplatform.services.resources.LocaleContextInfo;
 import org.exoplatform.upload.UploadService;
 import org.exoplatform.web.application.AbstractApplicationMessage;
 import org.exoplatform.web.application.ApplicationMessage;
@@ -72,6 +76,7 @@ import org.exoplatform.webui.form.UIFormTextAreaInput;
 import org.exoplatform.webui.form.ext.UIFormComboBox;
 import org.exoplatform.webui.form.input.UICheckBoxInput;
 import org.exoplatform.webui.organization.account.UIUserSelector;
+
 import java.io.ByteArrayInputStream;
 import java.io.OutputStream;
 import java.text.DateFormat;
@@ -89,6 +94,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.ResourceBundle;
 import java.util.TimeZone;
 
 /**
@@ -97,12 +103,12 @@ import java.util.TimeZone;
  *          hung.nguyen@exoplatform.com
  * Editor : Tuan Pham
  *          tuan.pham@exoplatform.com
- * Aus 01, 2007 2:48:18 PM 
+ * Aus 01, 2007 2:48:18 PM
  */
 @ComponentConfigs ( {
   @ComponentConfig(
                    lifecycle = UIFormLifecycle.class,
-                   template = "system:/groovy/webui/form/UIFormTabPane.gtmpl", 
+                   template = "system:/groovy/webui/form/UIFormTabPane.gtmpl",
                    events = {
                      @EventConfig(listeners = UIEventForm.SaveActionListener.class),
                      @EventConfig(listeners = UIEventForm.AddCategoryActionListener.class, phase = Phase.DECODE),
@@ -212,7 +218,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
     super("UIEventForm");
     this.setId("UIEventForm");
     saveEventSendMailUpdate = getLabel("SaveEvent-SendMailUpdate");
-    
+
     UIEventDetailTab eventDetailTab =  new UIEventDetailTab(TAB_EVENTDETAIL) ;
     addChild(eventDetailTab) ;
     UIEventReminderTab eventReminderTab =  new UIEventReminderTab(TAB_EVENTREMINDER) ;
@@ -255,9 +261,9 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
     ((UIFormDateTimePicker)eventDetailTab.getChildById(UIEventDetailTab.FIELD_FROM)).setDateFormatStyle(calSetting.getDateFormat()) ;
     ((UIFormDateTimePicker)eventDetailTab.getChildById(UIEventDetailTab.FIELD_TO)).setDateFormatStyle(calSetting.getDateFormat()) ;
     UIEventAttenderTab attenderTab = getChildById(TAB_EVENTATTENDER) ;
-    List<SelectItemOption<String>> fromTimes 
+    List<SelectItemOption<String>> fromTimes
     = CalendarUtils.getTimesSelectBoxOptions(calSetting.getTimeFormat(),calSetting.getTimeFormat(), calSetting.getTimeInterval()) ;
-    List<SelectItemOption<String>> toTimes 
+    List<SelectItemOption<String>> toTimes
     = CalendarUtils.getTimesSelectBoxOptions(calSetting.getTimeFormat(),calSetting.getTimeFormat(), calSetting.getTimeInterval()) ;
     eventDetailTab.getUIFormComboBox(UIEventDetailTab.FIELD_FROM_TIME).setOptions(fromTimes) ;
     eventDetailTab.getUIFormComboBox(UIEventDetailTab.FIELD_TO_TIME).setOptions(toTimes) ;
@@ -295,7 +301,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
       setEventPlace(eventCalendar.getLocation()) ;
       setEventIsRepeat(eventCalendar.getRepeatType() != null && !CalendarEvent.RP_NOREPEAT.equals(eventCalendar.getRepeatType()));
       setRepeatSummary(buildRepeatSummary(calendarEvent_));
-      // if it's exception occurrence, disabled repeat checkbox, it means you can't convert a exception occurrence to a repeating event 
+      // if it's exception occurrence, disabled repeat checkbox, it means you can't convert a exception occurrence to a repeating event
       if ((CalendarEvent.RP_NOREPEAT.equals(calendarEvent_.getRepeatType()) || calendarEvent_.getRepeatType() == null) && !CalendarUtils.isEmpty(calendarEvent_.getRecurrenceId())
           && calendarEvent_.getIsExceptionOccurrence()) {
         getChild(UIEventDetailTab.class).getUICheckBoxInput(UIEventDetailTab.FIELD_ISREPEAT).setDisabled(true);
@@ -336,7 +342,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
           eventDetailTab.getUIFormSelectBoxGroup(UIEventDetailTab.FIELD_CALENDAR).setDisabled(true) ;
           eventDetailTab.setActionField(UIEventDetailTab.FIELD_CATEGORY, null) ;
         }
-      }      
+      }
       attenderTab.calendar_.setTime(eventCalendar.getFromDateTime()) ;
     } else {
       java.util.Calendar cal = getCalendar(this, formTime, calSetting);
@@ -408,7 +414,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
     }else {
       selectBoxWithGroups.setOptions(getCalendars()) ;
     }
-    
+
     //String spaceId = UICalendarPortlet.getSpaceId();
     UICalendarPortlet uiCalendarPortlet = getAncestorOfType(UICalendarPortlet.class);
     if (uiCalendarPortlet != null && !uiCalendarPortlet.getSpaceGroupId().equals("")) {
@@ -451,21 +457,21 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
   public void deActivate() throws Exception {}
 
   @Override
-  public void updateSelect(String selectField, String value) throws Exception { } 
+  public void updateSelect(String selectField, String value) throws Exception { }
 
   private boolean isReminderValid() throws Exception {
     if(getEmailReminder()) {
       if(CalendarUtils.isEmpty(getEmailAddress())) {
         errorMsg_ = "UIEventForm.msg.event-email-required" ;
         errorValues = "";
-        return false ; 
+        return false ;
       }
       else if(!CalendarUtils.isValidEmailAddresses(getEmailAddress())) {
         errorMsg_ = "UIEventForm.msg.event-email-invalid" ;
         errorValues = CalendarUtils.invalidEmailAddresses(getEmailAddress()) ;
         return false ;
       }
-    } 
+    }
     errorMsg_ = null ;
     return true ;
   }
@@ -479,7 +485,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
     if(CalendarUtils.isEmpty(getCalendarId())) {
       errorMsg_ = getId() +  ".msg.event-calendar-required" ;
       return false ;
-    } 
+    }
     if(CalendarUtils.isEmpty(getEventCategory())) {
       errorMsg_ = getId() +  ".msg.event-category-required" ;
       return false ;
@@ -555,9 +561,9 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
     String value = eventDetailTab.getUIFormSelectBoxGroup(UIEventDetailTab.FIELD_CALENDAR).getValue() ;
     newCalendarId_ = value ;
     if (!CalendarUtils.isEmpty(value) && value.split(CalendarUtils.COLON).length>0) {
-      calType_ = value.split(CalendarUtils.COLON)[0] ; 
-      return value.split(CalendarUtils.COLON)[1] ;      
-    } 
+      calType_ = value.split(CalendarUtils.COLON)[0] ;
+      return value.split(CalendarUtils.COLON)[1] ;
+    }
     return value ;
   }
   public void setSelectedCalendarId(String value) {
@@ -739,7 +745,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
   protected String getPopupRepeatInterVal() {
     UIEventReminderTab eventReminderTab =  getChildById(TAB_EVENTREMINDER) ;
     return eventReminderTab.getUIFormSelectBox(UIEventReminderTab.POPUP_REPEAT_INTERVAL).getValue() ;
-  } 
+  }
 
   public void setEmailRemindBefore(String value) {
     UIEventReminderTab eventReminderTab =  getChildById(TAB_EVENTREMINDER) ;
@@ -783,7 +789,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
       }
     }
     return 0 ;
-  } 
+  }
   protected List<Attachment>  getAttachments(String eventId, boolean isAddNew) {
     UIEventDetailTab uiEventDetailTab = getChild(UIEventDetailTab.class) ;
     return uiEventDetailTab.getAttachments() ;
@@ -791,7 +797,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
 
   protected long getTotalAttachment() {
     UIEventDetailTab uiEventDetailTab = getChild(UIEventDetailTab.class) ;
-    long attSize = 0 ; 
+    long attSize = 0 ;
     for(Attachment att : uiEventDetailTab.getAttachments()) {
       attSize = attSize + att.getSize() ;
     }
@@ -806,7 +812,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
   protected void setPopupRepeatInterval(long value) {
     UIEventReminderTab eventReminderTab =  getChildById(TAB_EVENTREMINDER) ;
     eventReminderTab.getUIFormSelectBox(UIEventReminderTab.POPUP_REPEAT_INTERVAL).setValue(String.valueOf(value)) ;
-  } 
+  }
   protected void setEventReminders(List<Reminder> reminders){
     for(Reminder rm : reminders) {
       if(Reminder.TYPE_EMAIL.equals(rm.getReminderType())) {
@@ -816,11 +822,11 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
         setEmailRemindBefore(String.valueOf(rm.getAlarmBefore())) ;
         setEmailRepeatInterVal(rm.getRepeatInterval()) ;
       } else if(Reminder.TYPE_POPUP.equals(rm.getReminderType())) {
-        setPopupReminder(true) ;  
+        setPopupReminder(true) ;
         setPopupRepeat(rm.isRepeat()) ;
         setPopupRemindBefore(String.valueOf(rm.getAlarmBefore()));
         setPopupRepeatInterval(rm.getRepeatInterval()) ;
-      }  
+      }
     }
   }
   protected List<Reminder>  getEventReminders(Date fromDateTime, List<Reminder> currentReminders) throws Exception {
@@ -834,7 +840,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
             break ;
           }
         }
-      }     
+      }
       email.setReminderType(Reminder.TYPE_EMAIL) ;
       email.setReminderOwner(CalendarUtils.getCurrentUser());
       email.setAlarmBefore(Long.parseLong(getEmailRemindBefore())) ;
@@ -844,12 +850,12 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
         if(sbAddress.indexOf(s) < 0) {
           if(sbAddress.length() > 0) sbAddress.append(CalendarUtils.COMMA) ;
           sbAddress.append(s) ;
-        }  
+        }
       }
       email.setEmailAddress(sbAddress.toString()) ;
       email.setRepeate(isEmailRepeat()) ;
       email.setRepeatInterval(Long.parseLong(getEmailRepeatInterVal())) ;
-      email.setFromDateTime(fromDateTime) ;      
+      email.setFromDateTime(fromDateTime) ;
       if (!CalendarUtils.isEmpty(email.getEmailAddress())) reminders.add(email) ;
     }
     if(getPopupReminder()) {
@@ -861,7 +867,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
             break ;
           }
         }
-      } 
+      }
       StringBuffer sb = new StringBuffer() ;
       boolean isExist = false ;
       if(!isExist) {
@@ -875,7 +881,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
       popup.setRepeatInterval(Long.parseLong(getPopupRepeatInterVal())) ;
       popup.setFromDateTime(fromDateTime) ;
       reminders.add(popup) ;
-    } 
+    }
     return reminders ;
   }
 
@@ -930,7 +936,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
     String invitation = eventDetailTab.getUIFormTextAreaInput(FIELD_MEETING).getValue() ;
     if(CalendarUtils.isEmpty(invitation)) return null ;
     else return invitation.replace(CalendarUtils.SEMICOLON, CalendarUtils.COMMA).split(CalendarUtils.COMMA) ;
-  } 
+  }
 
   protected String getInvitationEmail() {
     StringBuilder buider = new StringBuilder("") ;
@@ -940,7 +946,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
                                                                           .lastIndexOf(CalendarUtils.OPEN_PARENTHESIS) + 1).replace(CalendarUtils.CLOSE_PARENTHESIS, "")) ;
     }
     return buider.toString() ;
-  } 
+  }
   protected void setMeetingInvitation(String[] values) {
     UIFormInputWithActions eventDetailTab =  getChildById(TAB_EVENTSHARE) ;
     StringBuffer sb = new StringBuffer() ;
@@ -960,7 +966,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
       buider.append(par) ;
     }
     return buider.toString() ;
-  } 
+  }
 
   protected String  getParticipantStatusValues() {
     StringBuilder buider = new StringBuilder("") ;
@@ -990,14 +996,11 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
 
   public void setParticipant(String values) throws Exception{
     OrganizationService orgService = CalendarUtils.getOrganizationService() ;
-    StringBuffer sb = new StringBuffer() ;
 
     for(String s : values.split("[\\r\\n]+")) {
       User user = orgService.getUserHandler().findUserByName(s, UserStatus.ANY) ;
       if(user != null) {
         participants_.put(s.trim(), user.getEmail()) ;
-        if(!CalendarUtils.isEmpty(sb.toString())) sb.append(CalendarUtils.BREAK_LINE) ;
-        sb.append(s.trim()) ;
       }
     }
     ((UIEventAttenderTab)getChildById(TAB_EVENTATTENDER)).updateParticipants(getParticipantValues()) ;
@@ -1010,7 +1013,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
       buider.append(par) ;
     }
     return buider.toString() ;
-  } 
+  }
 
   public void setParticipantStatus(String values) throws Exception{
     String[] array = values.split(CalendarUtils.BREAK_LINE);
@@ -1026,7 +1029,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
   }
 
   /**
-   * Fill data from invitation event to current event form 
+   * Fill data from invitation event to current event form
    * @param calSetting
    * @param event
    * @param calendarId
@@ -1053,8 +1056,8 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
     }
   }
 
-  private String buildMailSubject(CalendarEvent event, DateFormat df) {
-    StringBuffer sbSubject = new StringBuffer("["+getLabel("invitation")+"] ") ;
+  private String buildMailSubject(CalendarEvent event, DateFormat df, ResourceBundle res) {
+    StringBuffer sbSubject = new StringBuffer("["+getLabel(res, "invitation")+"] ") ;
     sbSubject.append(event.getSummary()) ;
     sbSubject.append(" ") ;
     sbSubject.append(df.format(event.getFromDateTime())) ;
@@ -1062,7 +1065,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
     return sbSubject.toString();
   }
 
-  private String buildMailBody(User invitor, CalendarEvent event, String toId, DateFormat df, String timezone) throws Exception {
+  private String buildMailBody(User invitor, CalendarEvent event, String toId, DateFormat df, String timezone, ResourceBundle res) throws Exception {
     List<Attachment> atts = getAttachments(null, false);
 
     StringBuffer sbBody = new StringBuffer() ;
@@ -1070,34 +1073,34 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
     sbBody.append("<table style=\"margin: 0px; padding: 0px; border-collapse: collapse; border-spacing: 0px; width: 100%; line-height: 16px;\">") ;
     sbBody.append("<tbody>") ;
     sbBody.append("<tr>") ;
-    sbBody.append("<td style=\"padding: 4px;  text-align: right; vertical-align: top; white-space:nowrap; \">"+getLabel("fromWho")+":</td>") ;
+    sbBody.append("<td style=\"padding: 4px;  text-align: right; vertical-align: top; white-space:nowrap; \">"+getLabel(res, "fromWho")+":</td>") ;
     sbBody.append("<td style=\"padding: 4px;\"> " + invitor.getUserName() +"("+invitor.getEmail()+")" + " </td>") ;
     sbBody.append("</tr>") ;
 
     sbBody.append("<tr>") ;
-    sbBody.append("<td style=\"padding: 4px;  text-align: right; vertical-align: top; white-space:nowrap;\">"+getLabel(UIEventDetailTab.FIELD_MESSAGE)+":</td>") ;
+    sbBody.append("<td style=\"padding: 4px;  text-align: right; vertical-align: top; white-space:nowrap;\">"+getLabel(res, UIEventDetailTab.FIELD_MESSAGE)+":</td>") ;
     sbBody.append("<td style=\"padding: 4px;\">" + event.getMessage()+ "</td>") ;
     sbBody.append("</tr>") ;
 
     sbBody.append("<tr>") ;
-    sbBody.append("<td style=\"padding: 4px;  text-align: right; vertical-align: top; white-space:nowrap;\">"+getLabel(UIEventDetailTab.FIELD_EVENT)+":</td>") ;
+    sbBody.append("<td style=\"padding: 4px;  text-align: right; vertical-align: top; white-space:nowrap;\">"+getLabel(res, UIEventDetailTab.FIELD_EVENT)+":</td>") ;
     sbBody.append("<td style=\"padding: 4px;\">" + event.getSummary()+ "</td>") ;
     sbBody.append("</tr>") ;
     sbBody.append("<tr>") ;
-    sbBody.append("<td style=\"padding: 4px;  text-align: right; vertical-align: top; white-space:nowrap;\">"+getLabel(UIEventDetailTab.FIELD_DESCRIPTION)+":</td>") ;
+    sbBody.append("<td style=\"padding: 4px;  text-align: right; vertical-align: top; white-space:nowrap;\">"+getLabel(res, UIEventDetailTab.FIELD_DESCRIPTION)+":</td>") ;
     sbBody.append("<td style=\"padding: 4px;\">" + (event.getDescription() != null && event.getDescription().trim().length() > 0 ? event.getDescription() : " ") + "</td>") ;
     sbBody.append("</tr>") ;
     sbBody.append("<tr>") ;
-    sbBody.append("<td style=\"padding: 4px;  text-align: right; vertical-align: top; white-space:nowrap;\">"+getLabel("when")+":</td>") ;
-    sbBody.append("<td style=\"padding: 4px;\"> <div>"+getLabel(UIEventDetailTab.FIELD_FROM)+": " +df.format(event.getFromDateTime())+" " + timezone + "</div>");
-    sbBody.append("<div>"+getLabel(UIEventDetailTab.FIELD_TO)+": "+df.format(event.getToDateTime())+" " + timezone + "</div></td>") ;
+    sbBody.append("<td style=\"padding: 4px;  text-align: right; vertical-align: top; white-space:nowrap;\">"+getLabel(res, "when")+":</td>") ;
+    sbBody.append("<td style=\"padding: 4px;\"> <div>"+getLabel(res, UIEventDetailTab.FIELD_FROM)+": " +df.format(event.getFromDateTime())+" " + timezone + "</div>");
+    sbBody.append("<div>"+getLabel(res, UIEventDetailTab.FIELD_TO)+": "+df.format(event.getToDateTime())+" " + timezone + "</div></td>") ;
     sbBody.append("</tr>") ;
     sbBody.append("<tr>") ;
-    sbBody.append("<td style=\"padding: 4px;  text-align: right; vertical-align: top; white-space:nowrap;\">"+getLabel(UIEventDetailTab.FIELD_PLACE)+":</td>") ;
+    sbBody.append("<td style=\"padding: 4px;  text-align: right; vertical-align: top; white-space:nowrap;\">"+getLabel(res, UIEventDetailTab.FIELD_PLACE)+":</td>") ;
     sbBody.append("<td style=\"padding: 4px;\">" + (event.getLocation() != null && event.getLocation().trim().length() > 0 ? event.getLocation(): " ") + "</td>") ;
     sbBody.append("</tr>") ;
     sbBody.append("<tr>") ;
-    sbBody.append("<td style=\"padding: 4px;  text-align: right; vertical-align: top; white-space:nowrap;\">"+getLabel(FIELD_MEETING)+"</td>") ;
+    sbBody.append("<td style=\"padding: 4px;  text-align: right; vertical-align: top; white-space:nowrap;\">"+getLabel(res, FIELD_MEETING)+"</td>") ;
     toId = toId.replace(CalendarUtils.BREAK_LINE, CalendarUtils.COMMA);
     if (CalendarUtils.isEmpty(getInvitationEmail())) {
       sbBody.append("<td style=\"padding: 4px;\">" +toId + "</td>") ;
@@ -1108,7 +1111,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
     sbBody.append("</tr>");
     if(!atts.isEmpty()){
       sbBody.append("<tr>");
-      sbBody.append("<td style=\"padding: 4px;  text-align: right; vertical-align: top; white-space:nowrap;\">"+getLabel(UIEventDetailTab.FIELD_ATTACHMENTS)+":</td>");
+      sbBody.append("<td style=\"padding: 4px;  text-align: right; vertical-align: top; white-space:nowrap;\">"+getLabel(res, UIEventDetailTab.FIELD_ATTACHMENTS)+":</td>");
       StringBuffer sbf = new StringBuffer();
       for(Attachment att : atts) {
         if(sbf.length() > 0) sbf.append(",") ;
@@ -1121,7 +1124,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
     return sbBody.toString();
   }
 
-  protected void sendMail(MailService svr, OrganizationService orSvr,CalendarSetting setting, String fromId,  String toId, CalendarEvent event) throws Exception {
+  protected void sendMail(MailService svr, OrganizationService orSvr, CalendarSetting setting, String fromId,  String toId, CalendarEvent event) throws Exception {
     User invitor = orSvr.getUserHandler().findUserByName(CalendarUtils.getCurrentUser()) ;
     if (invitor == null) return;
     List<Attachment> atts = getAttachments(null, false);
@@ -1133,78 +1136,86 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
     if(event.getInvitation()!= null) {
       for(String s : event.getInvitation()) {
         s = s.trim() ;
-        if(sbAddress.length() > 0) sbAddress.append(",") ;
+        if(sbAddress.length() > 0) sbAddress.append(CalendarUtils.COMMA) ;
         sbAddress.append(s) ;
         eXoIdMap.put(s, null);
       }
     }
 
     OrganizationService orgService = CalendarUtils.getOrganizationService() ;
-    StringBuffer sb = new StringBuffer() ;
     for(String s : toId.split(CalendarUtils.COMMA)) {
       User user = orgService.getUserHandler().findUserByName(s) ;
       if(user != null) {
-        if(!CalendarUtils.isEmpty(sb.toString())) sb.append(CalendarUtils.COMMA) ;
-        sb.append(user.getEmail()) ;
         eXoIdMap.put(user.getEmail(), s);
         eXoMailMap.put(s, user.getEmail());
+
+        if(sbAddress.length() > 0) sbAddress.append(CalendarUtils.COMMA) ;
+        sbAddress.append(user.getEmail());
       }
     }
-
-    if (sbAddress.length() > 0 && sb.toString().trim().length() > 0 ) sbAddress.append(",") ;
-    sbAddress.append(sb.toString().trim()) ;
-
-    StringBuffer values = new StringBuffer(fromId) ;
     User user = orSvr.getUserHandler().findUserByName(fromId) ;
-
-    values.append(CalendarUtils.SEMICOLON + " ") ;
-    values.append(toId) ;
-    values.append(CalendarUtils.SEMICOLON + " ") ;
-    values.append(event.getCalType()) ;
-    values.append(CalendarUtils.SEMICOLON + " ") ;
-    values.append(event.getCalendarId()) ;
-    values.append(CalendarUtils.SEMICOLON + " ") ;
-    values.append(event.getId()) ;
-
     CalendarService calService = CalendarUtils.getCalendarService() ;
-    org.exoplatform.services.mail.MailService mService = getApplicationComponent(org.exoplatform.services.mail.impl.MailServiceImpl.class) ;
-    org.exoplatform.services.mail.Attachment attachmentCal = new org.exoplatform.services.mail.Attachment() ;
-
+    org.exoplatform.services.mail.MailService mService = getApplicationComponent(org.exoplatform.services.mail.impl.MailServiceImpl.class) ;    
+    
+    byte[] icsFile = null;
+    try {         
+      OutputStream out = calService.getCalendarImportExports(CalendarService.ICALENDAR)
+          .exportEventCalendar(fromId, event.getCalendarId(), event.getCalType(), event.getId());
+      icsFile = out.toString().getBytes("UTF-8");
+    } catch (Exception e) {
+      if (LOG.isDebugEnabled()) LOG.debug("Fail to create attachment", e);
+    }
 
     CalendarSetting calendarSetting;
     DateFormat _df;
 
-    String userEmail;
-    for (String userId : toId.split(CalendarUtils.COMMA)) {
-      userEmail = eXoMailMap.get(userId);
+    String emailList = sbAddress.toString();
+    String userId;
+    for (String userEmail : emailList.split(CalendarUtils.COMMA)) {
+      if (CalendarUtils.isEmpty(userEmail)) continue;
 
-      calendarSetting = (calService.getCalendarSetting(userId) != null) ?
-              calService.getCalendarSetting(userId) : CalendarUtils.getCurrentUserCalendarSetting();
+      userId = eXoIdMap.get(userEmail);
+
+      calendarSetting = null;
+      if(userId != null) {
+        calendarSetting = calService.getCalendarSetting(userId);
+      }
+      if(calendarSetting == null) {
+        calendarSetting = CalendarUtils.getCurrentUserCalendarSetting();
+      }
+
+      //. get Resource bundle
+      WebuiRequestContext context = WebuiRequestContext.getCurrentInstance();
+      ResourceBundle res = null;
+      if(userId != null) {
+        UserProfile userProfile = orgService.getUserProfileHandler().findUserProfileByName(userId);
+        String lang = userProfile == null ? null : userProfile.getUserInfoMap().get(Constants.USER_LANGUAGE);
+        if(lang != null && !lang.isEmpty()) {
+          res = context.getApplication().getResourceBundle(LocaleContextInfo.getLocale(lang));
+        }
+      }
+      if(res == null) {
+        res = context.getApplicationResourceBundle();
+      }
+
+
       _df = new SimpleDateFormat(calendarSetting.getDateFormat() + " " + calendarSetting.getTimeFormat());
       _df.setTimeZone(TimeZone.getTimeZone(calendarSetting.getTimeZone()));
 
-      if (CalendarUtils.isEmpty(userEmail)) continue;
-      org.exoplatform.services.mail.Message  message = new org.exoplatform.services.mail.Message();
-      message.setSubject(buildMailSubject(event, _df)) ;
-      message.setBody(getBodyMail(buildMailBody(invitor, event, toId, _df, CalendarUtils.generateTimeZoneLabel(calendarSetting.getTimeZone())),
-              eXoIdMap, userEmail, invitor, event)) ;
+      org.exoplatform.services.mail.Message message = new org.exoplatform.services.mail.Message();
+      message.setSubject(buildMailSubject(event, _df, res));
+      message.setBody(getBodyMail(buildMailBody(invitor, event, toId, _df, CalendarUtils.generateTimeZoneLabel(calendarSetting.getTimeZone()), res),
+              eXoIdMap, userEmail, invitor, event, res)) ;
       message.setTo(userEmail);
       message.setMimeType(Utils.MIMETYPE_TEXTHTML) ;
       message.setFrom(user.getEmail()) ;
-      try {
-        OutputStream out = calService.getCalendarImportExports(CalendarService.ICALENDAR)
-                .exportEventCalendar(fromId, event.getCalendarId(), event.getCalType(), event.getId()) ;
-        ByteArrayInputStream is = new ByteArrayInputStream(out.toString().getBytes()) ;
+      
+      if (icsFile != null) {
+        ByteArrayInputStream is = new ByteArrayInputStream(icsFile) ;
+        org.exoplatform.services.mail.Attachment attachmentCal = new org.exoplatform.services.mail.Attachment() ;
         attachmentCal.setInputStream(is) ;
         attachmentCal.setName("icalendar.ics");
         attachmentCal.setMimeType("text/calendar") ;
-      }
-      catch (Exception e) {
-        attachmentCal = null;
-        if (LOG.isDebugEnabled()) LOG.debug("Fail to create attachment", e);
-      }
-
-      if (attachmentCal != null) {
         message.addAttachment(attachmentCal) ;
       }
 
@@ -1221,16 +1232,16 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
     }
   }
 
-  private String getBodyMail(String sbBody,Map<String, String> eXoIdMap,String s,User invitor,CalendarEvent event) throws Exception {
+  private String getBodyMail(String sbBody,Map<String, String> eXoIdMap,String s,User invitor,CalendarEvent event, ResourceBundle res) throws Exception {
     StringBuilder body = new StringBuilder(sbBody.toString());
     String eXoId = CalendarUtils.isEmpty(eXoIdMap.get(s)) ? "null":eXoIdMap.get(s);
     body.append("<tr>");
     body.append("<td style=\"padding: 4px;  text-align: right; vertical-align: top; white-space:nowrap;\">");
-    body.append(getLabel("likeToAttend")+" </td><td> <a href=\"" + getReplyInvitationLink(org.exoplatform.calendar.service.Utils.ACCEPT, invitor, s, eXoId, event) + "\" >"+getLabel("yes")+"</a>" + " - " + "<a href=\"" + getReplyInvitationLink(org.exoplatform.calendar.service.Utils.NOTSURE, invitor, s, eXoId, event) + "\" >"+getLabel("notSure")+"</a>" + " - " + "<a href=\"" + getReplyInvitationLink(org.exoplatform.calendar.service.Utils.DENY, invitor, s, eXoId, event) + "\" >"+getLabel("no")+"</a>");
+    body.append(getLabel(res, "likeToAttend")+" </td><td> <a href=\"" + getReplyInvitationLink(org.exoplatform.calendar.service.Utils.ACCEPT, invitor, s, eXoId, event) + "\" >"+getLabel(res, "yes")+"</a>" + " - " + "<a href=\"" + getReplyInvitationLink(org.exoplatform.calendar.service.Utils.NOTSURE, invitor, s, eXoId, event) + "\" >"+getLabel(res, "notSure")+"</a>" + " - " + "<a href=\"" + getReplyInvitationLink(org.exoplatform.calendar.service.Utils.DENY, invitor, s, eXoId, event) + "\" >"+getLabel(res, "no")+"</a>");
     body.append("</td></tr>");
     body.append("<tr>");
     body.append("<td style=\"padding: 4px;  text-align: right; vertical-align: top; white-space:nowrap;\">");
-    body.append(getLabel("seeMoreDetails")+" </td><td><a href=\"" + getReplyInvitationLink(org.exoplatform.calendar.service.Utils.ACCEPT_IMPORT, invitor, s, eXoId, event) + "\" >"+getLabel("importToExoCalendar")+"</a> "+getLabel("or")+" <a href=\"" + getReplyInvitationLink(org.exoplatform.calendar.service.Utils.JUMP_TO_CALENDAR, invitor, s, eXoId, event) + "\" >"+getLabel("jumpToExoCalendar")+"</a>");
+    body.append(getLabel(res, "seeMoreDetails")+" </td><td><a href=\"" + getReplyInvitationLink(org.exoplatform.calendar.service.Utils.ACCEPT_IMPORT, invitor, s, eXoId, event) + "\" >"+getLabel(res, "importToExoCalendar")+"</a> "+getLabel(res, "or")+" <a href=\"" + getReplyInvitationLink(org.exoplatform.calendar.service.Utils.JUMP_TO_CALENDAR, invitor, s, eXoId, event) + "\" >"+getLabel(res, "jumpToExoCalendar")+"</a>");
     body.append("</td></tr>");
     body.append("</tbody>");
     body.append("</table>");
@@ -1252,7 +1263,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
     }
     if (answer == org.exoplatform.calendar.service.Utils.JUMP_TO_CALENDAR) {
       return (calendarURL + CalendarUtils.INVITATION_DETAIL_URL + invitor.getUserName() + "/" + event.getId() + "/" + event.getCalType());
-    }     
+    }
     return "";
   }
 
@@ -1266,7 +1277,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
     return null;
   }
 
-  public List<ParticipantStatus> getParticipantStatusList() {    
+  public List<ParticipantStatus> getParticipantStatusList() {
     return participantStatusList_;
   }
 
@@ -1289,7 +1300,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
       String downloadLink = dservice.getDownloadLink(dservice.addDownloadResource(dresource));
       event.getRequestContext().getJavascriptManager().addJavascript("ajaxRedirect('" + downloadLink + "');");
       if (isEvent) {
-        event.getRequestContext().addUIComponentToUpdateByAjax(uiForm.getChildById(TAB_EVENTDETAIL)) ;        
+        event.getRequestContext().addUIComponentToUpdateByAjax(uiForm.getChildById(TAB_EVENTDETAIL)) ;
       } else {
         event.getRequestContext().addUIComponentToUpdateByAjax(uiForm.getChildById(UITaskForm.TAB_TASKDETAIL)) ;
       }
@@ -1301,7 +1312,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
         (oldCalendarEvent.getSummary() != null && !oldCalendarEvent.getSummary().equalsIgnoreCase(newCalendarEvent.getSummary()) || newCalendarEvent.getSummary() != null && !newCalendarEvent.getSummary().equalsIgnoreCase(oldCalendarEvent.getSummary()))
         || (oldCalendarEvent.getDescription() != null && !oldCalendarEvent.getDescription().equalsIgnoreCase(newCalendarEvent.getDescription()) || newCalendarEvent.getDescription() != null && !newCalendarEvent.getDescription().equalsIgnoreCase(oldCalendarEvent.getDescription()))
         || (oldCalendarEvent.getLocation() != null && !oldCalendarEvent.getLocation().equalsIgnoreCase(newCalendarEvent.getLocation()) || newCalendarEvent.getLocation() != null && !newCalendarEvent.getLocation().equalsIgnoreCase(oldCalendarEvent.getLocation()))
-        || (!oldCalendarEvent.getFromDateTime().equals(newCalendarEvent.getFromDateTime())) 
+        || (!oldCalendarEvent.getFromDateTime().equals(newCalendarEvent.getFromDateTime()))
         || (!oldCalendarEvent.getToDateTime().equals(newCalendarEvent.getToDateTime()))
         );
   }
@@ -1394,7 +1405,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
             && CalendarUtils.isSameDate(fromDate, occurrence.getFromDateTime())) {
       // popup confirm form
       UIConfirmForm confirmForm =  uiPopupAction.activate(UIConfirmForm.class, 600);
-      confirmForm.setConfirmMessage(uiForm.getLabel("update-recurrence-event-confirm-msg"));
+      confirmForm.setConfirmMessage("update-recurrence-event-confirm-msg");
       confirmForm.setConfig_id(uiForm.getId());
       confirmForm.setDelete(false);
       event.getRequestContext().addUIComponentToUpdateByAjax(uiPopupAction);
@@ -1464,13 +1475,13 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
       uiForm.setSelectedTab(TAB_EVENTDETAIL) ;
       event.getRequestContext().addUIComponentToUpdateByAjax(uiForm.getAncestorOfType(UIPopupAction.class)) ;
       return ;
-    } 
+    }
     if(!uiForm.isReminderValid()) {
       event.getRequestContext().getUIApplication().addMessage(new ApplicationMessage(uiForm.errorMsg_, new String[] {uiForm.errorValues} ));
       uiForm.setSelectedTab(TAB_EVENTREMINDER) ;
       event.getRequestContext().addUIComponentToUpdateByAjax(uiForm.getAncestorOfType(UIPopupAction.class)) ;
       return ;
-    } 
+    }
     if(!uiForm.isParticipantValid()) {
       event.getRequestContext().getUIApplication().addMessage(new ApplicationMessage(uiForm.errorMsg_, new String[] { uiForm.errorValues }));
       uiForm.setSelectedTab(TAB_EVENTSHARE) ;
@@ -1487,7 +1498,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
     String calendarId = uiForm.getCalendarId() ;
     if(from.equals(to)) {
       to = CalendarUtils.getEndDay(from).getTime() ;
-    } 
+    }
     if(uiForm.getEventAllDate()) {
       java.util.Calendar tempCal = CalendarUtils.getInstanceOfCurrentCalendar() ;
       tempCal.setTime(to) ;
@@ -1513,7 +1524,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
       event.getRequestContext().getUIApplication().addMessage(new ApplicationMessage("UICalendars.msg.have-no-permission-to-edit", null,1));
       return ;
     }
-    CalendarEvent calendarEvent  = null ; 
+    CalendarEvent calendarEvent  = null ;
     CalendarEvent oldCalendarEvent = null;
     String[] pars = uiForm.getParticipantValues().split(CalendarUtils.BREAK_LINE) ;
     String eventId = null ;
@@ -1540,7 +1551,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
 
     calendarEvent.setParticipant(pars) ;
     if(CalendarUtils.isEmpty(uiForm.getInvitationEmail())) calendarEvent.setInvitation(ArrayUtils.EMPTY_STRING_ARRAY);
-    else 
+    else
       if(CalendarUtils.isValidEmailAddresses(uiForm.getInvitationEmail())) {
         String addressList = uiForm.getInvitationEmail().replaceAll(CalendarUtils.SEMICOLON,CalendarUtils.COMMA) ;
         Map<String, String> emails = new LinkedHashMap<String, String>() ;
@@ -1563,7 +1574,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
     calendarEvent.setDescription(description) ;
     calendarEvent.setCalType(uiForm.calType_) ;
     calendarEvent.setCalendarId(calendarId) ;
-    calendarEvent.setEventCategoryId(uiForm.getEventCategory()) ;     
+    calendarEvent.setEventCategoryId(uiForm.getEventCategory()) ;
     UIFormSelectBox selectBox = ((UIFormInputWithActions)uiForm.getChildById(TAB_EVENTDETAIL))
         .getUIFormSelectBox(UIEventDetailTab.FIELD_CATEGORY) ;
     for (SelectItemOption<String> o : selectBox.getOptions()) {
@@ -1571,7 +1582,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
         calendarEvent.setEventCategoryName(o.getLabel()) ;
         break ;
       }
-    }              
+    }
     calendarEvent.setLocation(location) ;
 
     if (uiForm.getEventIsRepeat()) {
@@ -1583,6 +1594,9 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
         calendarEvent.setRepeatUntilDate(repeatEvent.getRepeatUntilDate());
         calendarEvent.setRepeatByDay(repeatEvent.getRepeatByDay());
         calendarEvent.setRepeatByMonthDay(repeatEvent.getRepeatByMonthDay());
+
+        TimeZone tz = TimeZone.getTimeZone(calSetting.getTimeZone());
+        Utils.updateOriginDate(calendarEvent, tz);
       }
     } else {
       calendarEvent.setRepeatType(CalendarEvent.RP_NOREPEAT);
@@ -1593,7 +1607,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
       calendarEvent.setRepeatByMonthDay(null);
     }
 
-    calendarEvent.setPriority(uiForm.getEventPriority()) ; 
+    calendarEvent.setPriority(uiForm.getEventPriority()) ;
     calendarEvent.setPrivate(UIEventForm.ITEM_PRIVATE.equals(uiForm.getShareType())) ;
     calendarEvent.setEventState(uiForm.getEventState()) ;
     calendarEvent.setAttachment(uiForm.getAttachments(calendarEvent.getId(), uiForm.isAddNew_)) ;
@@ -1641,7 +1655,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
               //calService.updateOccurrenceEvent(fromCal, toCal, fromType, toType, listEvent, username);
             }
           }
-        } 
+        }
         else {
           if (org.exoplatform.calendar.service.Utils.isExceptionOccurrence(calendarEvent_)) calService.updateOccurrenceEvent(fromCal, toCal, fromType, toType, listEvent, username);
           else calService.moveEvent(fromCal, toCal, fromType, toType, listEvent, username) ;
@@ -1657,15 +1671,12 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
           if (LOG.isWarnEnabled()) LOG.warn("Sending invitation failed!" , e);
         }
       }
-
-      if(calendarView instanceof UIListContainer) {
-        UIListContainer uiListContainer = (UIListContainer)calendarView ;
-        if (!uiListContainer.isDisplaySearchResult()) {
-          uiViewContainer.refresh() ;
-        }
-      } else {
-        uiViewContainer.refresh() ;
-      }  
+      
+      uiViewContainer.refresh();
+      UIListContainer uiListView = calendarPortlet.findFirstComponentOfType(UIListContainer.class);
+      if (uiListView != null && uiListView.isRendered() && uiListView.isDisplaySearchResult()) {
+        uiListView.findFirstComponentOfType(UIListView.class).refreshSearch();
+      }
       calendarView.setLastUpdatedEventId(eventId) ;
       UIMiniCalendar uiMiniCalendar = calendarPortlet.findFirstComponentOfType(UIMiniCalendar.class) ;
       event.getRequestContext().addUIComponentToUpdateByAjax(uiMiniCalendar) ;
@@ -1705,8 +1716,8 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
 
   /**
    * Build the repeating summary, i.e: daily every 2 days, until 02/03/2011. <br/>
-   * The summary structure is defined in resource bundle, it contains some parameters and </br> 
-   * will be replaced by values from repeatEvent. <br/> 
+   * The summary structure is defined in resource bundle, it contains some parameters and </br>
+   * will be replaced by values from repeatEvent. <br/>
    * <p>There are 6 parameters: {count}, {until}, {interval}, {byDays}, {theDay}, {theNumber}.<br/>
    * Some labels in resource bundle to define numbers (the first, the second, ...) which were used in summary
    * @param repeatEvent the repeating event
@@ -1714,7 +1725,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
    * @throws Exception
    */
   public String buildRepeatSummary(CalendarEvent repeatEvent) throws Exception {
-    CalendarSetting calSetting = CalendarUtils.getCurrentUserCalendarSetting(); 
+    CalendarSetting calSetting = CalendarUtils.getCurrentUserCalendarSetting();
     WebuiRequestContext context = RequestContext.getCurrentInstance() ;
     Locale locale = context.getParentAppRequestContext().getLocale() ;
     DateFormat format = new SimpleDateFormat(calSetting.getDateFormat(), locale);
@@ -1745,7 +1756,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
         //pattern = "Daily, {count} times";
         //pattern = "Every {interval} days, {count} times";
         pattern.append(", ").append(getLabel("count-times"));
-      } 
+      }
       if (endType.equals(RP_END_BYDATE)) {
         //pattern = "Daily, until {until}";
         //pattern = "Every {interval} days, until {until}";
@@ -1757,7 +1768,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
       return summary;
     }
 
-    if (repeatType.equals(CalendarEvent.RP_WEEKLY)) {   
+    if (repeatType.equals(CalendarEvent.RP_WEEKLY)) {
       if (interval == 1) {
         //pattern = "Weekly on {byDays}";
         pattern = new StringBuilder(getLabel("weekly"));
@@ -1797,7 +1808,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
       if (repeatEvent.getRepeatByDay() != null && repeatEvent.getRepeatByDay().length > 0) monthlyType = UIRepeatEventForm.RP_MONTHLY_BYDAY;
 
       if (interval == 1) {
-        // pattern = "Monthly on" 
+        // pattern = "Monthly on"
         pattern = new StringBuilder(getLabel("monthly"));
       } else {
         // pattern = "Every {interval} months on
@@ -1819,7 +1830,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
       }
       if (endType.equals(RP_END_BYDATE)) {
         pattern.append(", ").append(getLabel("until"));
-      } 
+      }
 
       String theNumber = ""; // the first, the second, the third, ...
       String theDay = ""; // in monthly by day, it's Monday, Tuesday, ... (day of week), in monthly by monthday, it's 1-31 (day of month)
@@ -1853,18 +1864,18 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
         // pattern = "Yearly on {theDay}"
         pattern = new StringBuilder(getLabel("yearly"));
       } else {
-        // pattern = "Every {interval} years on {theDay}" 
+        // pattern = "Every {interval} years on {theDay}"
         pattern = new StringBuilder(getLabel("every-year"));
       }
 
       if (endType.equals(RP_END_AFTER)) {
         // pattern = "Yearly on {theDay}, {count} times"
-        // pattern = "Every {interval} years on {theDay}, {count} times" 
+        // pattern = "Every {interval} years on {theDay}, {count} times"
         pattern.append(", ").append(getLabel("count-times"));
       }
       if (endType.equals(RP_END_BYDATE)) {
         // pattern = "Yearly on {theDay}, until {until}"
-        // pattern = "Every {interval} years on {theDay}, until {until}" 
+        // pattern = "Every {interval} years on {theDay}, until {until}"
         pattern.append(", ").append(getLabel("until"));
       }
 
@@ -1945,7 +1956,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
       UIEventAttenderTab tabAttender = uiForm.getChildById(TAB_EVENTATTENDER) ;
       String values = uiForm.getParticipantValues() ;
       tabAttender.updateParticipants(values) ;
-      event.getRequestContext().addUIComponentToUpdateByAjax(tabAttender) ;       
+      event.getRequestContext().addUIComponentToUpdateByAjax(tabAttender) ;
 
       UIPopupContainer uiContainer = uiForm.getAncestorOfType(UIPopupContainer.class) ;
       UIPopupAction uiPopupAction = uiContainer.getChild(UIPopupAction.class);
@@ -1991,18 +2002,18 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
       }
       uiEventShareTab.setParticipantStatusList(uiEventForm.getParticipantStatusList());
       uiEventShareTab.updateCurrentPage(currentPage.intValue());
-      ((UIEventAttenderTab)uiEventForm.getChildById(TAB_EVENTATTENDER)).updateParticipants(uiEventForm.getParticipantValues()) ; 
+      ((UIEventAttenderTab)uiEventForm.getChildById(TAB_EVENTATTENDER)).updateParticipants(uiEventForm.getParticipantValues()) ;
       uiEventForm.setMeetingInvitation(currentEmails.toArray(new String[currentEmails.size()])) ;
       //close select user popup
-      uiPoupPopupWindow.setShow(false) ;      
-      event.getRequestContext().addUIComponentToUpdateByAjax(uiContainer) ;  
+      uiPoupPopupWindow.setShow(false) ;
+      event.getRequestContext().addUIComponentToUpdateByAjax(uiContainer) ;
     }
   }
   static  public class AddUserActionListener extends EventListener<UIEventForm> {
     @Override
     public void execute(Event<UIEventForm> event) throws Exception {
       UIEventForm uiForm = event.getSource() ;
-      UIPopupContainer uiPopupContainer = uiForm.getParent();  
+      UIPopupContainer uiPopupContainer = uiForm.getParent();
       uiPopupContainer.deActivate();
       UIPopupWindow uiPopupWindow = uiPopupContainer.getChildById("UIPopupWindowAddUserEventForm") ;
       if(uiPopupWindow == null)uiPopupWindow = uiPopupContainer.addChild(UIPopupWindow.class, "UIPopupWindowAddUserEventForm", "UIPopupWindowAddUserEventForm") ;
@@ -2069,7 +2080,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
                 i.remove();
             }
             uiForm.participants_.remove(id);
-            uiForm.removeChildById(id) ; 
+            uiForm.removeChildById(id) ;
 
             List<String> currentEmails = new ArrayList<String>() ;
             String [] invitors = uiForm.getMeetingInvitation() ;
@@ -2195,7 +2206,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
   public static class ConfirmUpdateOnlyInstance extends EventListener<UIEventForm> {
 
     @Override
-    public void execute(Event<UIEventForm> event) throws Exception {      
+    public void execute(Event<UIEventForm> event) throws Exception {
       UIEventForm uiForm = event.getSource();
       uiForm.saveSeries = SAVE_SERIES_ONLY;
       uiForm.processSaveEvent(event);
@@ -2251,7 +2262,7 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
 
     // if it's a virtual recurrence
     CalendarEvent occurrence = uiEventForm.calendarEvent_;
-    if (occurrence != null && !CalendarEvent.RP_NOREPEAT.equals(occurrence.getRepeatType()) 
+    if (occurrence != null && !CalendarEvent.RP_NOREPEAT.equals(occurrence.getRepeatType())
         && !CalendarUtils.isEmpty(occurrence.getRecurrenceId()) && CalendarUtils.isSameDate(fromDate, occurrence.getFromDateTime()) ) {
       // popup confirm form
       UIConfirmForm confirmForm =  uiPopupAction.activate(UIConfirmForm.class, 480);
@@ -2285,6 +2296,9 @@ public class UIEventForm extends UIFormTabPane implements UIPopupComponent, UISe
       } else {
         this.name = participant;
         this.email = participant;
+      }
+      if (!status.equals(STATUS_EMPTY)) {
+        status = CalendarUtils.getResourceBundle("UIEventForm.label." + status,status);
       }
       this.status = status;
     }

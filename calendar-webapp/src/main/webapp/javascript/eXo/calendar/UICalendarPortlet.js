@@ -1517,6 +1517,16 @@
             "recurId\s*=\s*[A-Za-z0-9_]*(?=&|'|\")": "recurId=" + recurId
         };
 
+        var $event = gj(src);
+        var $checkbox = $event.find('input[type="checkbox"][name^="Event"]');
+        var $form = $event.closest('form.UIForm');
+        var $checked = $form.find('input[type="checkbox"][name^="Event"]:checked');
+        if($checked.length > 0 && !$checkbox.is(':checked')) {
+          $checked.attr('checked',false);
+          $checked = $form.find('input[type="checkbox"][name^="Event"]:checked');
+        }
+        $checkbox.attr('checked', true);
+
         var items = gj(cs.UIContextMenu.menuElement).find("a");
         for (var i = 0; i < items.length; i++) {
             if (gj(items[i]).hasClass("eventAction")) {
@@ -1530,6 +1540,8 @@
                     {
                         items[i].parentNode.style.display = "none";
                     }
+                } else if($checked.length > 1 && items[i].href.indexOf("Delete") > 0) {
+                  items[i].href = items[i].getAttribute('deleteActionLink');
                 }
             }
         }
@@ -1730,9 +1742,10 @@
         var _e = window.event || evt;
         var src = _e.srcElement || _e.target;
         var UIContextMenu = cs.UIContextMenu;
-        var objectValue = "";
+        var objvalue = "";
         var links = gj(UIContextMenu.menuElement).find("a");
         var isEditable;
+        var $checked = new Array();
 
         if (!gj(src).parents(".eventBoxes")[0]) {
             var eventCell = gj(src);
@@ -1771,6 +1784,16 @@
 
                 UIContextMenu.changeAction(UIContextMenu.menuElement, map);
             }
+
+            var $event = gj(src).closest('.dayContentContainer');
+            var $checkbox = $event.find('input[type="checkbox"][name^="Event"]');
+            var $monthViewForm = gj('form#UIMonthView');
+            $checked = $monthViewForm.find('input[type="checkbox"][name^="Event"]:checked');
+            if($checked.length > 0 && !$checkbox.is(':checked')) {
+                $checked.attr('checked',false);
+                $checked = $monthViewForm.find('input[type="checkbox"][name^="Event"]:checked');
+            }
+            $checkbox.attr('checked', true);
         }
 
         var items = gj(cs.UIContextMenu.menuElement).find("a");
@@ -1778,15 +1801,50 @@
             if (gj(items[i]).hasClass("eventAction")) {
                 items[i].parentNode.style.display = "block";
 
-                if (isEditable && (isEditable == "false"))
-                {
+                if (isEditable && (isEditable == "false")) {
                     if ((items[i].href.indexOf("Edit") >= 0) ||
                         (items[i].href.indexOf("Delete") >= 0) ||
                         (items[i].href.indexOf("ExportEvent") >= 0))
                     {
                         items[i].parentNode.style.display = "none";
                     }
+                } else if($checked.length > 1 && items[i].href.indexOf("Delete") > 0) {
+                    items[i].href = items[i].getAttribute('deleteActionLink');
                 }
+            }
+        }
+    };
+
+    UICalendarPortlet.prototype.topbarDeleteAction = function(formId, elementId) {
+        var $form = gj('form#' + formId);
+        var $element = $form.find('#' + elementId);
+
+        var $checked = $form.find('input[type="checkbox"][name^="Event"]:checked');
+        if($checked.length > 1) {
+            var action = $element.attr('multiDeleteAction');
+            if(action) {
+                gj.globalEval(action);
+            }
+        } else {
+            var UIContextMenu = cs.UIContextMenu;
+            var $event = $checked.closest('.eventBoxes, .uiListViewRow');
+            var action = $element.attr('singleDeleteAction');
+            if(action) {
+                var eventId = $event.attr("eventId");
+                var calendarId = $event.attr("calId");
+                var calType = $event.attr("calType");
+                var isOccur = $event.attr("isOccur");
+                var recurId = $event.attr("recurId");
+                if (recurId == "null") recurId = "";
+                var map = {
+                  "objectId\s*=\s*[A-Za-z0-9_]*(?=&|'|\")": "objectId=" + eventId,
+                  "calendarId\s*=\s*[A-Za-z0-9_]*(?=&|'|\")": "calendarId=" + calendarId,
+                  "calType\s*=\s*[A-Za-z0-9_]*(?=&|'|\")": "calType=" + calType,
+                  "isOccur\s*=\s*[A-Za-z0-9_]*(?=&|'|\")": "isOccur=" + isOccur,
+                  "recurId\s*=\s*[A-Za-z0-9_]*(?=&|'|\")": "recurId=" + recurId
+                };
+                action = UIContextMenu.replaceall(action, map);
+                gj.globalEval(action);
             }
         }
     };
@@ -1984,7 +2042,7 @@
             imgChk.className = "iconCheckBox checkbox";
         }
 
-        if ((!events || events.length == 0) && _module.UICalendarPortlet.getElementById("uiListView")) {
+        if ((!events || events.length == 0) && _module.UICalendarPortlet.getElementById("UIListView")) {
             uiForm.submitForm('UICalendars','Tick', true)
         }
         if (!events) return;
@@ -3351,16 +3409,79 @@
         var uiCombobox = wx.UICombobox ;
         var comboList = gj(uiWorkingWorkspace).find('input.UIComboboxInput');
         var i = comboList.length ;
-        while(i--){
+        while(i--) {
+          if (!gj(comboList[i]).data("initialized")) {
             comboList[i].value = gj(comboList[i]).prevAll('input')[0].value;
-            var onfocus = comboList[i].getAttribute("onfocus") ;
-            var onclick = comboList[i].getAttribute("onclick") ;
-            var onblur = comboList[i].getAttribute("onblur") ;
-            if(!onfocus) gj(comboList[i]).on('focus', uiCombobox.show) ;
-            if(!onclick) gj(comboList[i]).on('click', uiCombobox.show) ;
-            if(!onblur)  gj(comboList[i]).on('blur',uiCombobox.correct) ;
+
+            var onfocus = comboList[i].getAttribute("onfocus");
+            var onclick = comboList[i].getAttribute("onclick");
+            if(!onfocus) gj(comboList[i]).on('focus.tryShow', uiCombobox.tryShow);
+            if(!onclick) gj(comboList[i]).on('click.tryShow', uiCombobox.tryShow);
+
+            //workround to clear registered event in combobox template
+            comboList[i].onkeyup = null;
+            //register by jquery instead
+            gj(comboList[i]).off('keyup').on('keyup.combo', uiCombobox.onKeyUp);
+            gj(comboList[i]).data("initialized", true);
+          }
         }
     };
+
+    wx.UICombobox.tryShow = function() {
+      if (gj(this).parent().find(".UIComboboxContainer").css('display') === 'none') {
+        wx.UICombobox.show.apply(this, arguments);
+      }
+    };
+
+    wx.UICombobox.onKeyUp = function(e) {
+      if (e.keyCode == 38 || e.keyCode == 40) {
+//        wx.UICombobox.tryShow.call(this);
+        
+        var jInput = gj(this);
+        var hiddenInput = jInput.prev('input');      
+        var data = eval(this.getAttribute("options"));
+        
+        var idx = 0;
+        var val = hiddenInput.val();
+        if (val && val !== '') {
+          idx = gj.inArray(val, data);
+        }
+        idx = idx != -1 ? idx : 0;
+        
+        if(e.keyCode == 38) {
+          //Up arrow key
+          idx = idx > 0 ? idx - 1 : 0;
+        } else if(e.keyCode = 40) {
+          //Down arrow key
+          idx = idx < data.length - 1 ? idx + 1 : idx;
+        }
+        
+        var item = jInput.parent().find('.UIComboboxLabel').get(idx);
+        jInput.attr('value', gj(item).html());
+        wx.UICombobox.setSelectedItem(jInput.get(0));
+      } else {
+        wx.UICombobox.complete(this, e);
+      }
+      
+    };
+    
+    wx.UICombobox.setSelectedItem = function (textbox) {
+      if (this.lastSelectedItem)
+          gj(this.lastSelectedItem).removeClass("UIComboboxSelectedItem");
+      var selectedIndex = parseInt(this.getSelectedItem(textbox));
+      if (selectedIndex >= 0) {
+          gj(this.items[selectedIndex]).addClass("UIComboboxSelectedItem");
+          this.lastSelectedItem = this.items[selectedIndex];
+          
+          var container = gj(this.list).find('.UIComboboxItemContainer'); 
+          var currPos = gj(this.lastSelectedItem).height() * selectedIndex;
+          if (currPos < container.scrollTop() || currPos > container.scrollTop() + container.height()) {
+            container.scrollTop(currPos);
+          }
+          var hidden = gj(textbox).prev("input")[0];
+          hidden.value = this.items[selectedIndex].getAttribute("value");
+      }
+  };
 
     /**
      Override combobox onchange
@@ -3417,7 +3538,7 @@
         if(_module.lastSelectedCategory) {
             selectBox = gj(_module.UICalendarPortlet.filterSelect);
             selectBox.val(_module.lastSelectedCategory);
-            //re-filter    
+            //re-filter
             if(gj('#UIListContainer').size() > 0) {//list view
                 uiForm.submitEvent(_module.UICalendarPortlet.portletId +'#UIListView','Onchange','&objectId=eventCategories');
             } else {//other views
@@ -3458,9 +3579,10 @@
         var values = gj(eFromTime).next("input.UIComboboxInput").attr("options");
         var arr = eval(values);
         if(isNew == "false") this.dayDiff = this.dateDiff(new Date(eFromDate.val()).getTime(), new Date(eToDate.val()).getTime());
-        if(compid == "UIEventForm"){
-            var fromIndex = arr.indexOf(eFromTime.val());
-            var toIndex = arr.indexOf(eToTime.val()) ;
+        if(compid == "UIEventForm") {        	
+            var fromIndex = this.getTimeIndex(eFromTime.val());
+            var toIndex = this.getTimeIndex(eToTime.val(), true);
+            
             this.timeShiftE = toIndex - fromIndex ;
         } else if(compid == "UITaskForm") {
             var fromIndex = arr.indexOf(eFromTime.val());
@@ -3479,6 +3601,16 @@
         gj(eToTime).prev().on('click','a.UIComboboxItem', function(){_module.UICalendarPortlet.updateShifTime(compid, isNew, eFromDate, eToDate, eFromTime, eToTime, timeShift)});
         gj(eToTime).next().on('keydown', function(event){_module.UICalendarPortlet.updateShifTime(compid, isNew, eFromDate, eToDate, eFromTime, eToTime, timeShift, event)});
     }
+    
+    UICalendarPortlet.prototype.getTimeIndex = function(time, roundUp) {
+    	var t = time.split(":");
+    	var minutes = parseInt(gj.trim(t[0])) * 60 + parseInt(gj.trim(t[1]));
+    	if (roundUp) {
+    		return Math.ceil(minutes/30);
+    	} else {
+    		return Math.floor(minutes/30);
+    	}
+    }
 
     UICalendarPortlet.prototype.suggestTime = function(compid, isNew, eFromDate, eToDate, eFromTime, eToTime, timeShift, event){
         if(event != null) {
@@ -3489,7 +3621,7 @@
         var arr = eval(values);
         var start = eFromTime.val();
         var size = arr.length ;
-        var index = arr.indexOf(start);
+        var index = this.getTimeIndex(start);
         if(compid == "UIEventForm"){
             if((index + this.timeShiftE)>= size){
                 this.addDay(eFromDate, this.dayDiff + 1, eToDate, format);
@@ -3538,9 +3670,9 @@
         var arr = eval(values);
         var start = eFromTime.val();
         var size = arr.length ;
-        var indexs = arr.indexOf(start);
+        var indexs = this.getTimeIndex(start);
         var end = eToTime.val();
-        var indexe = arr.indexOf(end);
+        var indexe = this.getTimeIndex(end, true);
         if(compid == "UIEventForm"){
             if((indexe - indexs) > 0) {
                 this.timeShiftE = indexe - indexs;
@@ -3636,7 +3768,7 @@
             input.focus();//focus
             tmp = input.val();
             input.val('');
-            input.val(tmp); //move the cursor to the end 
+            input.val(tmp); //move the cursor to the end
         }
     }
 
