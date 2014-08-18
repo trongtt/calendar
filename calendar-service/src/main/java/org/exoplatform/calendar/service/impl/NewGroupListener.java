@@ -76,13 +76,19 @@ public class NewGroupListener extends GroupEventListener {
         if (groupId.equalsIgnoreCase(g))
           return;
         // In case of ignore all groups
-        if (g.equals(Utils.SLASH_AST)) {
+        if (g.equals(Utils.SLASH_AST))
           return;
-        }
         // if(g.contains("/spaces/*") && groupId.toLowerCase().contains("spaces/")) return;
-        // ignore create calendar for group of space
-        if ((g.lastIndexOf(Utils.SLASH_AST) > -1) && ((g.substring(0, g.lastIndexOf(Utils.SLASH_AST))).equalsIgnoreCase(parentId)))
-          return;
+        // ignore create calendar for group of space        
+        if (g.lastIndexOf(Utils.SLASH_AST) > -1) {
+          String calendarGroup = g.substring(0, g.lastIndexOf(Utils.SLASH_AST));          
+          if (calendarGroup.equalsIgnoreCase(parentId)) {            
+            return;
+          }          
+          else if ((parentId != null) && (parentId.length()>0) && (parentId.toLowerCase().startsWith(calendarGroup.toLowerCase()+"/"))){
+            return;
+          }
+        }         
       }
     boolean isPublic = true;
     Calendar calendar = new Calendar();
