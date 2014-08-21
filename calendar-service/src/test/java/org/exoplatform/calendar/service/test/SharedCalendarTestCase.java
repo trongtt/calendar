@@ -42,49 +42,19 @@ public class SharedCalendarTestCase extends BaseCalendarServiceTestCase {
         eventSearchConnector_ = getService(EventSearchConnector.class);
     }
 
-    private Calendar createSharedCalendar(String name, String description) {
-        try {
-            Calendar sharedCalendar = new Calendar();
-            sharedCalendar.setName(name);
-            sharedCalendar.setDescription(description);
-            sharedCalendar.setPublic(true);
-            sharedCalendar.setViewPermission(new String[] { "*.*" });
-            sharedCalendar.setEditPermission(new String[] { "*.*", "john" });
-            calendarService_.saveUserCalendar(username, sharedCalendar, true);
-
-            List<String> receiverUser = new ArrayList<String>();
-            receiverUser.add("john");
-            calendarService_.shareCalendar(username, sharedCalendar.getId(), receiverUser);
-
-            return sharedCalendar;
-        } catch (Exception e) {
-            fail();
-            return null;
-        }
+    public void testGetTypeOfCalendar() throws Exception {
+      Calendar calendar = createPrivateCalendar(username, "myCalendar", "Description");
+      Calendar publicCalendar = createGroupCalendar(userGroups, "publicCalendar", "publicDescription");
+      Calendar sharedCalendar = createSharedCalendar("sharedCalendar", "shareDescription");
+      
+      assertEquals(Utils.PRIVATE_TYPE, calendarService_.getTypeOfCalendar(username, calendar.getId()));
+      assertEquals(Utils.PUBLIC_TYPE, calendarService_.getTypeOfCalendar(username, publicCalendar.getId()));
+      assertEquals(Utils.SHARED_TYPE, calendarService_.getTypeOfCalendar("john", sharedCalendar.getId()));
+      assertEquals(Utils.INVALID_TYPE, calendarService_.getTypeOfCalendar(username, "Not exist id"));
+      
+      assertEquals(sharedCalendar, calendarService_.getCalendarById(sharedCalendar.getId()));
     }
 
-    //TODO: @nttuyen consider this test
-    public void testGetTypeOfCalendar() {
-        try {
-            Calendar calendar = createPrivateCalendar(username, "myCalendar", "Description");
-            Calendar publicCalendar = createPublicCalendar(userGroups, "publicCalendar", "publicDescription");
-            Calendar sharedCalendar = createSharedCalendar("sharedCalendar", "shareDescription");
-
-            assertEquals(Utils.PRIVATE_TYPE, calendarService_.getTypeOfCalendar(username, calendar.getId()));
-            assertEquals(Utils.PUBLIC_TYPE, calendarService_.getTypeOfCalendar(username, publicCalendar.getId()));
-            assertEquals(Utils.SHARED_TYPE, calendarService_.getTypeOfCalendar("john", sharedCalendar.getId()));
-            assertEquals(Utils.INVALID_TYPE, calendarService_.getTypeOfCalendar(username, "Not exist id"));
-
-            assertEquals(sharedCalendar, calendarService_.getCalendarById(sharedCalendar.getId()));
-
-            calendarService_.removeUserCalendar(username, calendar.getId());
-            calendarService_.removePublicCalendar(publicCalendar.getId());
-            calendarService_.removeSharedCalendar(username, sharedCalendar.getId());
-        } catch (Exception e) {
-            fail();
-        }
-    }
-    //mvn test -Dtest=TestCalendarService#testSharedCalendar
     public void testSharedCalendar() throws Exception {
         Calendar cal = new Calendar();
         cal.setName("myCalendar");
@@ -148,18 +118,16 @@ public class SharedCalendarTestCase extends BaseCalendarServiceTestCase {
         calendarService_.removeSharedCalendar("john", cal.getId());
         assertNull(calendarService_.getSharedCalendars("john", true));
     }
-    public void testRemoveSharedCalendarFolder() {
-        try {
-            createSharedCalendar("sharedCalendar", "shareDescription");
 
-            calendarService_.removeSharedCalendarFolder("john");
-
-            GroupCalendarData groupCalendarData = calendarService_.getSharedCalendars(username, true);
-            assertNull(groupCalendarData);
-        } catch (Exception e) {
-            fail();
-        }
+    public void testRemoveSharedCalendarFolder() throws Exception {
+      createSharedCalendar("sharedCalendar", "shareDescription");
+      
+      calendarService_.removeSharedCalendarFolder("john");
+      
+      GroupCalendarData groupCalendarData = calendarService_.getSharedCalendars(username, true);
+      assertNull(groupCalendarData);
     }
+    
     public void testShareCalendarWithEditPermission() throws Exception {
         Calendar cal = createPrivateCalendar(username, "test share", "test sharing with edit permission");
         List<String> sharedUsers = new ArrayList<String>();
@@ -183,12 +151,29 @@ public class SharedCalendarTestCase extends BaseCalendarServiceTestCase {
         CalendarEvent eventByJohn = createCalendarEventInstance("john");
         CalendarEvent eventByDemo = createCalendarEventInstance("demo");
 
-        try{
-            calendarService_.saveEventToSharedCalendar("john", cal.getId(), eventByJohn, true);
-            calendarService_.saveEventToSharedCalendar("mary", cal.getId(), eventByMary, true);
-            calendarService_.saveEventToSharedCalendar("demo", cal.getId(), eventByDemo, true);
-        } catch(Exception e) {
-            fail();
-        }
+        calendarService_.saveEventToSharedCalendar("john", cal.getId(), eventByJohn, true);
+        calendarService_.saveEventToSharedCalendar("mary", cal.getId(), eventByMary, true);
+        calendarService_.saveEventToSharedCalendar("demo", cal.getId(), eventByDemo, true);
     }
+    
+    private Calendar createSharedCalendar(String name, String description) {
+      try {
+          Calendar sharedCalendar = new Calendar();
+          sharedCalendar.setName(name);
+          sharedCalendar.setDescription(description);
+          sharedCalendar.setPublic(true);
+          sharedCalendar.setViewPermission(new String[] { "*.*" });
+          sharedCalendar.setEditPermission(new String[] { "*.*", "john" });
+          calendarService_.saveUserCalendar(username, sharedCalendar, true);
+
+          List<String> receiverUser = new ArrayList<String>();
+          receiverUser.add("john");
+          calendarService_.shareCalendar(username, sharedCalendar.getId(), receiverUser);
+
+          return sharedCalendar;
+      } catch (Exception e) {
+          fail();
+          return null;
+      }
+  }
 }

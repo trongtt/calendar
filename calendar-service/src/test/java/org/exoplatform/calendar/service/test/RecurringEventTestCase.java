@@ -18,6 +18,8 @@
  */
 package org.exoplatform.calendar.service.test;
 
+import javax.jcr.query.Query;
+
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,8 +28,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
-
-import javax.jcr.query.Query;
 
 import org.exoplatform.calendar.service.Calendar;
 import org.exoplatform.calendar.service.CalendarEvent;
@@ -52,34 +52,15 @@ public class RecurringEventTestCase extends BaseCalendarServiceTestCase {
     storage_ = ((CalendarServiceImpl)calendarService_).getDataStorage();
   }
 
-  //mvn test -Dtest=TestCalendarService#testRemoveOccurrenceEvent
-  public void testRemoveOccurrenceEvent() throws Exception{
+  public void testRemoveOccurrenceEvent() throws Exception {
 
-    java.util.Calendar fromCal = java.util.Calendar.getInstance(tz);
-    fromCal.set(2013, 2, 7, 5, 30);
+    CalendarEvent recurEvent = createRepetitiveEventForTest();
 
-    java.util.Calendar toCal = java.util.Calendar.getInstance(tz);
-    toCal.set(2013, 2, 7, 6, 30);
-
-    Calendar calendar = createPrivateCalendar(username, username, "TestRepetitiveEvent");
-    CalendarEvent recurEvent = new CalendarEvent();
-    recurEvent.setSummary("TestRemoveOccurence");
-    recurEvent.setFromDateTime(fromCal.getTime());
-    recurEvent.setToDateTime(toCal.getTime());
-    recurEvent.setRepeatType(CalendarEvent.RP_DAILY);
-    recurEvent.setRepeatInterval(1);
-    recurEvent.setRepeatCount(6);
-    recurEvent.setRepeatUntilDate(null);
-    recurEvent.setRepeatByDay(null);
-    recurEvent.setRepeatUntilDate(null);
     java.util.Calendar from = java.util.Calendar.getInstance(tz);
     java.util.Calendar to = java.util.Calendar.getInstance(tz);
     from.set(2013, 2, 1, 0, 0, 0);
     to.set(2013, 2, 12, 0, 0, 0);
 
-    calendarService_.saveUserCalendar(username, calendar, true);
-    recurEvent.setCalendarId(calendar.getId());
-    calendarService_.saveUserEvent(username, calendar.getId(), recurEvent, true);
     List<CalendarEvent> original = calendarService_.getOriginalRecurrenceEvents(username, from, to, null);
     assertEquals(1, original.size());
 
@@ -89,6 +70,8 @@ public class RecurringEventTestCase extends BaseCalendarServiceTestCase {
     SimpleDateFormat sf = new SimpleDateFormat(Utils.DATE_FORMAT_RECUR_ID);
     sf.setTimeZone(tz);
 
+    java.util.Calendar fromCal = java.util.Calendar.getInstance(tz);
+    fromCal.setTime(recurEvent.getFromDateTime());
     fromCal.add(java.util.Calendar.DATE, 1);
     String recurenceId1 = sf.format(fromCal.getTime());
 
@@ -121,37 +104,17 @@ public class RecurringEventTestCase extends BaseCalendarServiceTestCase {
 
     calendarService_.removeAllSeriesEvents(recurEvent, username);
     assertNull(calendarService_.getEventById(recurEvent.getId()));
-    calendarService_.removeUserCalendar(username, calendar.getId());
   }
 
-  //mvn test -Dtest=TestCalendarService#testSaveAllOccurrenceEvent
   public void testSaveAllOccurrenceEvent() throws Exception {
 
-    java.util.Calendar fromCal = java.util.Calendar.getInstance(tz);
-    fromCal.set(2013, 2, 7, 5, 30);
-
-    java.util.Calendar toCal = java.util.Calendar.getInstance(tz);
-    toCal.set(2013, 2, 7, 6, 30);
-
-    Calendar calendar = createPrivateCalendar(username, username, "unified search test");
-    CalendarEvent recurEvent = new CalendarEvent();
-    recurEvent.setSummary("repeated past");
-    recurEvent.setFromDateTime(fromCal.getTime());
-    recurEvent.setToDateTime(toCal.getTime());
-    recurEvent.setRepeatType(CalendarEvent.RP_DAILY);
-    recurEvent.setRepeatInterval(1);
-    recurEvent.setRepeatCount(6);
-    recurEvent.setRepeatUntilDate(null);
-    recurEvent.setRepeatByDay(null);
-    recurEvent.setRepeatUntilDate(null);
+    CalendarEvent recurEvent = createRepetitiveEventForTest();
+    
     java.util.Calendar from = java.util.Calendar.getInstance(tz);
     java.util.Calendar to = java.util.Calendar.getInstance(tz);
     from.set(2013, 2, 1, 0, 0, 0);
     to.set(2013, 2, 12, 0, 0, 0);
 
-    calendarService_.saveUserCalendar(username, calendar, true);
-    recurEvent.setCalendarId(calendar.getId());
-    calendarService_.saveUserEvent(username, calendar.getId(), recurEvent, true);
     List<CalendarEvent> original = calendarService_.getOriginalRecurrenceEvents(username, from, to, null);
     assertEquals(1, original.size());
 
@@ -160,6 +123,8 @@ public class RecurringEventTestCase extends BaseCalendarServiceTestCase {
 
     SimpleDateFormat sf = new SimpleDateFormat(Utils.DATE_FORMAT_RECUR_ID);
     sf.setTimeZone(tz);
+    java.util.Calendar fromCal = java.util.Calendar.getInstance(tz);
+    fromCal.setTime(recurEvent.getFromDateTime());
     fromCal.add(java.util.Calendar.DATE, 2);
     String reocurenceId1 = sf.format(fromCal.getTime());
     CalendarEvent occEvent1 = occMap.get(reocurenceId1);
@@ -172,13 +137,9 @@ public class RecurringEventTestCase extends BaseCalendarServiceTestCase {
     calendarService_.saveAllSeriesEvents(recurEvent, username);
     occMap = calendarService_.getOccurrenceEvents(recurEvent, from, to, timeZone);
     assertEquals(4, occMap.size());
-
-    calendarService_.removeRecurrenceSeries(username, recurEvent);
-    calendarService_.removeUserCalendar(username, calendar.getId());
   }
 
-  //mvn test -Dtest=TestCalendarService#testSaveFollowingOccurrenceEvent
-  public void testSaveFollowingOccurrenceEvent() throws Exception{
+  public void testSaveFollowingOccurrenceEvent() throws Exception {
 
     CalendarEvent recurEvent = createRepetitiveEventForTest();
 
@@ -226,14 +187,9 @@ public class RecurringEventTestCase extends BaseCalendarServiceTestCase {
 
     exceptions = calendarService_.getExceptionEvents(username, recurEvent);
     assertEquals(0,exceptions.size());//the exception occEvent2 should be removed now
-
-    calendarService_.removeRecurrenceSeries(username, recurEvent);
-    calendarService_.removeRecurrenceSeries(username, occEvent1);
-    calendarService_.removeUserCalendar(username, recurEvent.getCalendarId());
   }
 
-  //mvn test -Dtest=TestCalendarService#testSaveOneOccurrenceEvent
-  public void testSaveOneOccurrenceEvent() throws Exception{
+  public void testSaveOneOccurrenceEvent() throws Exception {
 
     CalendarEvent recurEvent = createRepetitiveEventForTest();
 
@@ -287,9 +243,6 @@ public class RecurringEventTestCase extends BaseCalendarServiceTestCase {
     list = calendarService_.getExceptionEvents(username,recurEvent);
     assertEquals(3, occMap.size());
     assertEquals(0,list.size());
-
-    calendarService_.removeUserEvent(username, recurEvent.getCalendarId(), recurEvent.getId());
-    calendarService_.removeUserCalendar(username, recurEvent.getCalendarId());
   }
 
   public void testGetRepetitiveEvent() throws Exception {
@@ -334,9 +287,6 @@ public class RecurringEventTestCase extends BaseCalendarServiceTestCase {
     expectedOrigin = calendarService_.getRepetitiveEvent(exceptionEvent);
     assertNotNull(expectedOrigin);
     assertEquals(recurEvent.getId(), expectedOrigin.getId());
-
-    calendarService_.removeRecurrenceSeries(username, recurEvent);
-    calendarService_.removeUserCalendar(username, recurEvent.getCalendarId());
   }
 
   /**
@@ -366,7 +316,6 @@ public class RecurringEventTestCase extends BaseCalendarServiceTestCase {
     from.set(2013, 2, 1, 0, 0, 0);
     to.set(2013, 2, 12, 0, 0, 0);
 
-    calendarService_.saveUserCalendar(username, calendar, true);
     calendarService_.saveUserEvent(username, calendar.getId(), recurEvent, true);
     Map<String, CalendarEvent> occMap = calendarService_.getOccurrenceEvents(recurEvent, from, to, timeZone);
 
@@ -389,8 +338,6 @@ public class RecurringEventTestCase extends BaseCalendarServiceTestCase {
     Collection<SearchResult> result = unifiedSearchService_.search(null, query.getText(), params, 0, 10, query.getOrderBy()[0] , query.getOrderType());
     assertNotNull(result) ;
     assertEquals(1, result.size());
-    calendarService_.removeUserEvent(username, calendar.getId(), recurEvent.getId());
-    calendarService_.removeUserCalendar(username, calendar.getId());
   }
 
   /**
@@ -443,32 +390,15 @@ public class RecurringEventTestCase extends BaseCalendarServiceTestCase {
    * @throws Exception
    */
   public void testGetOccurrenceEvents3() throws Exception {
-    java.util.Calendar fromCal = java.util.Calendar.getInstance(tz);
-    fromCal.set(2013, 2, 7, 5, 30);
 
-    java.util.Calendar toCal = java.util.Calendar.getInstance(tz);
-    toCal.set(2013, 2, 7, 6, 30);
-
-    Calendar calendar = createPrivateCalendar(username, username, "unified search test");
-    CalendarEvent recurEvent = new CalendarEvent();
-    recurEvent.setSummary("repeated past");
-    recurEvent.setFromDateTime(fromCal.getTime());
-    recurEvent.setToDateTime(toCal.getTime());
-    recurEvent.setRepeatType(CalendarEvent.RP_DAILY);
-    recurEvent.setRepeatInterval(1);
-    recurEvent.setRepeatCount(6);
-    recurEvent.setRepeatUntilDate(null);
-    recurEvent.setRepeatByDay(null);
-    //recurEvent.setRepeatByMonthDay(new long[] { 2, 3, 4, 5, 7 });
-    //recurEvent.setRepeatInterval(2);
-    recurEvent.setRepeatUntilDate(null);
+    CalendarEvent recurEvent = createRepetitiveEventForTest();
+    Calendar calendar = calendarService_.getCalendarById(recurEvent.getCalendarId());
+    
     java.util.Calendar from = java.util.Calendar.getInstance(tz);
     java.util.Calendar to = java.util.Calendar.getInstance(tz);
     from.set(2013, 2, 1, 0, 0, 0);
     to.set(2013, 2, 12, 0, 0, 0);
 
-    calendarService_.saveUserCalendar(username, calendar, true);
-    calendarService_.saveUserEvent(username, calendar.getId(), recurEvent, true);
     List<CalendarEvent> original = calendarService_.getOriginalRecurrenceEvents(username, from, to, null);
     assertEquals(1, original.size());
 
@@ -477,6 +407,8 @@ public class RecurringEventTestCase extends BaseCalendarServiceTestCase {
 
     SimpleDateFormat sf = new SimpleDateFormat(Utils.DATE_FORMAT_RECUR_ID);
     sf.setTimeZone(tz);
+    java.util.Calendar fromCal = java.util.Calendar.getInstance(tz);
+    fromCal.setTime(recurEvent.getFromDateTime());
     String reocurenceId1 = sf.format(fromCal.getTime());
     CalendarEvent occEvent1 = occMap.get(reocurenceId1);
 
@@ -499,7 +431,6 @@ public class RecurringEventTestCase extends BaseCalendarServiceTestCase {
 
     //Break first event in series and save
     //set break ID
-
 
     List<CalendarEvent> listEvent = new ArrayList<CalendarEvent>();
     occEvent1.setIsExceptionOccurrence(true);
@@ -532,95 +463,75 @@ public class RecurringEventTestCase extends BaseCalendarServiceTestCase {
     assertEquals(1, original.size());
     occMap = calendarService_.getOccurrenceEvents(recurEvent, from, to, timeZone);
     assertEquals(3, occMap.size());
-
-    calendarService_.removeSharedEvent("john", calendar.getId(), recurEvent.getId());
-    calendarService_.removeSharedCalendar("john", calendar.getId());
-    calendarService_.removeUserEvent(username, calendar.getId(), recurEvent.getId());
-    calendarService_.removeUserCalendar(username, calendar.getId());
-
   }
 
-  public void testUpdateRecurrenceSeries() {
-    try {
-
-      Calendar calendar = createPrivateCalendar(username, "myCalendar", "Description");
-      Calendar publicCalendar = createPublicCalendar(userGroups, "publicCalendar", "publicDescription");
-
-      EventCategory eventCategory = createEventCategory("eventCategoryName0", "description");
-
-      java.util.Calendar fromCal = java.util.Calendar.getInstance(tz);
-      java.util.Calendar toCal = java.util.Calendar.getInstance(tz);
-      toCal.add(java.util.Calendar.HOUR, 1);
-      java.util.Calendar repeatUntilDate = java.util.Calendar.getInstance(tz);
-      repeatUntilDate.add(java.util.Calendar.DATE, 5);
-
-      CalendarEvent userEvent = new CalendarEvent();
-      userEvent.setSummary("Have a meeting");
-      userEvent.setFromDateTime(fromCal.getTime());
-      userEvent.setToDateTime(toCal.getTime());
-      userEvent.setCalendarId(calendar.getId());
-      userEvent.setEventCategoryId(eventCategory.getId());
-      userEvent.setRepeatType(CalendarEvent.RP_DAILY);
-      userEvent.setRepeatInterval(2);
-      userEvent.setRepeatCount(3);
-      userEvent.setRepeatUntilDate(repeatUntilDate.getTime());
-      userEvent.setRepeatByDay(null);
-      userEvent.setRepeatByMonthDay(new long[] { 2, 3, 4, 5, 7 });
-      storage_.saveOccurrenceEvent(username, calendar.getId(), userEvent, true);
-
-      storage_.getOccurrenceEvents(userEvent, fromCal, toCal, timeZone);
-
-      List<CalendarEvent> listEvent = new ArrayList<CalendarEvent>();
-      listEvent.add(userEvent);
-      storage_.updateOccurrenceEvent(calendar.getId(),
-              publicCalendar.getId(),
-              String.valueOf(Calendar.TYPE_PRIVATE),
-              String.valueOf(Calendar.TYPE_PUBLIC),
-              listEvent,
-              username);
-
-      calendarService_.removeUserEvent(username, calendar.getId(), userEvent.getId());
-      calendarService_.removeEventCategory(username, eventCategory.getId());
-      calendarService_.removeUserCalendar(username, calendar.getId());
-      calendarService_.removePublicCalendar(publicCalendar.getId());
-    } catch (Exception e) {
-      fail();
-    }
+  public void testUpdateRecurrenceSeries() throws Exception {
+    Calendar calendar = createPrivateCalendar(username, "myCalendar", "Description");
+    Calendar publicCalendar = createGroupCalendar(userGroups, "publicCalendar", "publicDescription");
+    
+    EventCategory eventCategory = createUserEventCategory(username, "eventCategoryName0");
+    
+    java.util.Calendar fromCal = java.util.Calendar.getInstance(tz);
+    java.util.Calendar toCal = java.util.Calendar.getInstance(tz);
+    toCal.add(java.util.Calendar.HOUR, 1);
+    java.util.Calendar repeatUntilDate = java.util.Calendar.getInstance(tz);
+    repeatUntilDate.add(java.util.Calendar.DATE, 5);
+    
+    CalendarEvent userEvent = new CalendarEvent();
+    userEvent.setSummary("Have a meeting");
+    userEvent.setFromDateTime(fromCal.getTime());
+    userEvent.setToDateTime(toCal.getTime());
+    userEvent.setCalendarId(calendar.getId());
+    userEvent.setEventCategoryId(eventCategory.getId());
+    userEvent.setRepeatType(CalendarEvent.RP_DAILY);
+    userEvent.setRepeatInterval(2);
+    userEvent.setRepeatCount(3);
+    userEvent.setRepeatUntilDate(repeatUntilDate.getTime());
+    userEvent.setRepeatByDay(null);
+    userEvent.setRepeatByMonthDay(new long[] { 2, 3, 4, 5, 7 });
+    storage_.saveOccurrenceEvent(username, calendar.getId(), userEvent, true);
+    
+    storage_.getOccurrenceEvents(userEvent, fromCal, toCal, timeZone);
+    
+    List<CalendarEvent> listEvent = new ArrayList<CalendarEvent>();
+    listEvent.add(userEvent);
+    storage_.updateOccurrenceEvent(calendar.getId(),
+                                   publicCalendar.getId(),
+                                   String.valueOf(Calendar.TYPE_PRIVATE),
+                                   String.valueOf(Calendar.TYPE_PUBLIC),
+                                   listEvent,
+                                   username);    
   }
 
-  public void testCalculateRecurrenceFinishDate() {
-    try {
-      TimeZone timeZone = TimeZone.getTimeZone("GMT");
-
-      java.util.Calendar fromCal = java.util.Calendar.getInstance(timeZone);
-      fromCal.set(2011, 6, 20, 5, 30);
-
-      java.util.Calendar toCal = java.util.Calendar.getInstance(timeZone);
-      toCal.set(2011, 6, 25, 5, 30);
-
-      CalendarEvent userEvent = new CalendarEvent();
-      userEvent.setFromDateTime(fromCal.getTime());
-      userEvent.setToDateTime(toCal.getTime());
-      userEvent.setRepeatType(CalendarEvent.RP_DAILY);
-      userEvent.setRepeatInterval(2);
-      userEvent.setRepeatCount(3);
-      userEvent.setRepeatUntilDate(null);
-      userEvent.setRepeatByDay(null);
-      userEvent.setRepeatByMonthDay(new long[] { 2, 3, 4, 5, 7 });
-
-      Date date = storage_.calculateRecurrenceFinishDate(userEvent);
-
-      java.util.Calendar calendar = java.util.Calendar.getInstance(timeZone);
-      calendar.setTime(date);
-
-      assertEquals(2011, calendar.get(java.util.Calendar.YEAR));
-      assertEquals(6, calendar.get(java.util.Calendar.MONTH));
-      assertEquals(25, calendar.get(java.util.Calendar.DATE));
-      assertEquals(0, calendar.get(java.util.Calendar.HOUR));
-      assertEquals(0, calendar.get(java.util.Calendar.MINUTE));
-    } catch (Exception e) {
-      fail();
-    }
+  public void testCalculateRecurrenceFinishDate() throws Exception {
+    TimeZone timeZone = TimeZone.getTimeZone("GMT");
+    
+    java.util.Calendar fromCal = java.util.Calendar.getInstance(timeZone);
+    fromCal.set(2011, 6, 20, 5, 30);
+    
+    java.util.Calendar toCal = java.util.Calendar.getInstance(timeZone);
+    toCal.set(2011, 6, 25, 5, 30);
+    
+    CalendarEvent userEvent = new CalendarEvent();
+    userEvent.setFromDateTime(fromCal.getTime());
+    userEvent.setToDateTime(toCal.getTime());
+    userEvent.setRepeatType(CalendarEvent.RP_DAILY);
+    userEvent.setRepeatInterval(2);
+    userEvent.setRepeatCount(3);
+    userEvent.setRepeatUntilDate(null);
+    userEvent.setRepeatByDay(null);
+    userEvent.setRepeatByMonthDay(new long[] { 2, 3, 4, 5, 7 });
+    
+    Date date = storage_.calculateRecurrenceFinishDate(userEvent);
+    
+    java.util.Calendar calendar = java.util.Calendar.getInstance(timeZone);
+    calendar.setTime(date);
+    
+    assertEquals(2011, calendar.get(java.util.Calendar.YEAR));
+    assertEquals(6, calendar.get(java.util.Calendar.MONTH));
+    assertEquals(25, calendar.get(java.util.Calendar.DATE));
+    assertEquals(0, calendar.get(java.util.Calendar.HOUR));
+    assertEquals(0, calendar.get(java.util.Calendar.MINUTE));
   }
 
   public void testGetPreviousOccurence() throws  Exception {
@@ -687,7 +598,7 @@ public class RecurringEventTestCase extends BaseCalendarServiceTestCase {
     assertEquals(18, calendar.get(java.util.Calendar.DATE));
   }
 
-  private CalendarEvent createRepetitiveEventForTest() throws  Exception{
+  private CalendarEvent createRepetitiveEventForTest() throws  Exception {
     java.util.Calendar fromCal = java.util.Calendar.getInstance(tz);
     fromCal.set(2013, 2, 7, 5, 30);
 
@@ -705,24 +616,11 @@ public class RecurringEventTestCase extends BaseCalendarServiceTestCase {
     recurEvent.setRepeatCount(6);
     recurEvent.setRepeatUntilDate(null);
     recurEvent.setRepeatByDay(null);
-    recurEvent.setRepeatUntilDate(null);
     recurEvent.setCalendarId(calendar.getId());
 
     calendarService_.saveUserCalendar(username, calendar, true);
     calendarService_.saveUserEvent(username, calendar.getId(), recurEvent, true);
 
     return recurEvent;
-  }
-
-  private EventCategory createEventCategory(String name, String description) {
-    try {
-      EventCategory eventCategory = new EventCategory();
-      eventCategory.setName(name);
-      calendarService_.saveEventCategory(username, eventCategory, true);
-      return eventCategory;
-    } catch (Exception e) {
-      fail();
-      return null;
-    }
   }
 }

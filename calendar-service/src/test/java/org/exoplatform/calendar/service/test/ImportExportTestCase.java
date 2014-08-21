@@ -23,22 +23,15 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.exoplatform.calendar.service.Calendar;
 import org.exoplatform.calendar.service.CalendarEvent;
 import org.exoplatform.calendar.service.CalendarImportExport;
 import org.exoplatform.calendar.service.CalendarService;
 
 public class ImportExportTestCase extends BaseCalendarServiceTestCase {
 
-    //mvn test -Dtest=TestCalendarService#testImportExportIcs
     public void testImportExportIcs() throws Exception {
-        CalendarImportExport calIE = calendarService_.getCalendarImportExports(CalendarService.ICALENDAR);
-        String calendarId = "IcsCalendar";
-        Calendar cal = new Calendar();
-        cal.setId(calendarId);
-        cal.setName(calendarId);
-        cal.setPublic(true);
-        calendarService_.saveUserCalendar(username, cal, true);
+        CalendarImportExport calIE = calendarService_.getCalendarImportExports(CalendarService.ICALENDAR);        
+        String calendarId = createPrivateCalendar(username, "IcsCalendar", "abcd").getId();
 
         // event with high priority
         InputStream icalInputStream = Thread.currentThread().getContextClassLoader().getResourceAsStream("ObmCalendar_isolated.ics");
@@ -91,18 +84,11 @@ public class ImportExportTestCase extends BaseCalendarServiceTestCase {
 
         icalOutputStream.close();
         icalInputStream.close();
-
-        calendarService_.removeUserCalendar(username, calendarId);
     }
-    //mvn test -Dtest=TestCalendarService#testImportCSVFile
+
     public void testImportCSVFile() throws Exception{
         CalendarImportExport calIE = calendarService_.getCalendarImportExports(CalendarService.EXPORTEDCSV);
-        String calendarId = "CSVCalendar";
-        Calendar cal = new Calendar();
-        cal.setId(calendarId);
-        cal.setName(calendarId);
-        cal.setPublic(true);
-        calendarService_.saveUserCalendar(username, cal, true);
+        String calendarId = createPrivateCalendar(username, "CSVCalendar", "abcd").getId();
 
         InputStream in = Thread.currentThread().getContextClassLoader().getResourceAsStream("sunbird_calendar.csv");
         calIE.importCalendar(username, in, calendarId, calendarId, null, null, false);
