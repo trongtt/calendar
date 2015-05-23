@@ -31,7 +31,7 @@ public class Calendar extends AbstractBean {
 
   private static final long serialVersionUID = 2638692203625602436L;
 
-  public enum Type {
+  public enum Type implements CalendarType {
 
     PERSONAL(0),
 
@@ -152,6 +152,8 @@ public class Calendar extends AbstractBean {
   private boolean              _isPublic      = false;
 
   private int                  _calType;
+  
+  private CalendarType calendarType;
   
   private boolean       remote = false;
   
@@ -309,7 +311,7 @@ public class Calendar extends AbstractBean {
     return _calType;
   }
 
-  public void setCalType(int calType) {
+  public void setCalType(int calType) {    
     this._calType = calType;
   }
 
@@ -327,5 +329,13 @@ public class Calendar extends AbstractBean {
 
   public void setHasChildren(boolean children) {
     this.hasChildren = children;
+  }
+
+  public void setCalendarType(CalendarType type) {
+    this.calendarType = type;
+  }
+  
+  public CalendarType getCalendarType() {
+    return calendarType;
   }
 }
